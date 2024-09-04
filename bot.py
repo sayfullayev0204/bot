@@ -112,7 +112,12 @@ def send_city_selection(message):
     
         if row:
             keyboard.row(*row)
-
+        keyboard.add(
+                            types.InlineKeyboardButton(
+                                text="Через администратора",
+                                url=f"t.me/sayfullayev_0204"  # Replace with admin's username
+                            )
+                        )
         keyboard.add(
             types.InlineKeyboardButton(
                 text="Условия перезаклада",
@@ -259,12 +264,7 @@ def handle_payment(call):
                                     callback_data=f"select_card_{card['id']}"
                                 )
                             )
-                        keyboard.add(
-                            types.InlineKeyboardButton(
-                                text="Через администратора",
-                                url=f"t.me/sayfullayev_0204"  # Replace with admin's username
-                            )
-                        )
+                        
                         bot.send_message(call.message.chat.id, f"Ваш актуальный баланс {narxi}.\nЧем вы будете оплачивать?", reply_markup=keyboard)
                     else:
                         bot.send_message(call.message.chat.id, "Karta ma'lumotlari topilmadi yoki karta ro'yxati bo'sh.")
