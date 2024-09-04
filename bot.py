@@ -20,19 +20,22 @@ order_message_ids = {}
 
 # Generate CAPTCHA
 def generate_captcha():
-    # Tasvir yaratish va shrift o'rnatish
     captcha_text = str(random.randint(100000, 999999))
     background = Image.open("s.jpg").convert("RGBA")
     image = background.resize((200, 100))
     draw = ImageDraw.Draw(image)
+
+    # Shrift faylini bot papkasida to‘g‘ri yo‘l bilan yuklash
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    font_path = os.path.join(BASE_DIR, "arialbd.ttf")
     
-    # Default shriftni yuklash
     try:
-        font = ImageFont.load_default()
-    except OSError:
+        font = ImageFont.truetype(font_path, size=36)
+    except IOError:
+        logger.error(f"Font file not found: {font_path}")
+        # Fallback to default font if the specified font is not found
         font = ImageFont.load_default()
 
-    # Matnni tasvirga qo'shish
     for i, char in enumerate(captcha_text):
         x = random.randint(10 + i * 30, 30 + i * 30)
         y = random.randint(20, 50)
