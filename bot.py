@@ -158,7 +158,7 @@ def send_product_selection(call):
             keyboard.add(button)
         bot.send_message(call.message.chat.id, "Выберите товар:", reply_markup=keyboard)
     else:
-        bot.send_message(call.message.chat.id, "Bu shahar uchun hech qanday mahsulot mavjud emas.")
+        bot.send_message(call.message.chat.id, "Пока нет доступных городов.")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("product_"))
 def send_rayon_selection(call):
