@@ -20,12 +20,19 @@ order_message_ids = {}
 
 # Generate CAPTCHA
 def generate_captcha():
+    # Tasvir yaratish va shrift o'rnatish
     captcha_text = str(random.randint(100000, 999999))
     background = Image.open("s.jpg").convert("RGBA")
     image = background.resize((200, 100))
     draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype("arialbd.ttf", size=36)
+    
+    # Default shriftni yuklash
+    try:
+        font = ImageFont.load_default()
+    except OSError:
+        font = ImageFont.load_default()
 
+    # Matnni tasvirga qo'shish
     for i, char in enumerate(captcha_text):
         x = random.randint(10 + i * 30, 30 + i * 30)
         y = random.randint(20, 50)
@@ -33,6 +40,7 @@ def generate_captcha():
 
     logger.info(f"Captcha generated: {captcha_text}")
     return captcha_text, image
+
 
 @bot.message_handler(commands=['start'])
 def send_captcha_or_greet(message):
