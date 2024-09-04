@@ -115,7 +115,7 @@ def send_city_selection(message):
         keyboard.add(
                             types.InlineKeyboardButton(
                                 text="Через администратора",
-                                url=f"t.me/sayfullayev_0204"  # Replace with admin's username
+                                url=f"t.me/Menejer_xizmati"  # Replace with admin's username
                             )
                         )
         keyboard.add(
