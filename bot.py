@@ -143,7 +143,15 @@ def send_product_selection(call):
     user_data[user_id] = {"city_id": city_id, "name": call.from_user.first_name}
 
     response = requests.get(f'{API_ENDPOINT}mahsulot/?shaxar_id={city_id}')
-    products = response.json().get('results', [])
+    products_data = response.json()
+
+    # Check if the response is a list or a dictionary
+    if isinstance(products_data, dict):
+        products = products_data.get('results', [])
+    elif isinstance(products_data, list):
+        products = products_data
+    else:
+        products = []
 
     if products:
         keyboard = types.InlineKeyboardMarkup(row_width=2)
