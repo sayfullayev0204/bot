@@ -100,24 +100,24 @@ def send_city_selection(message):
 
     if cities:
         keyboard = types.InlineKeyboardMarkup()
-    
+
         row = []
         for index, city in enumerate(cities):
             button = types.InlineKeyboardButton(text=city['nomi'], callback_data=f"city_{city['id']}")
             row.append(button)
             
-            if (index + 1) % 2 == 0:
-                keyboard.row(*row)
+            # Add row after every two buttons or if it's the last button
+            if (index + 1) % 2 == 0 or index == len(cities) - 1:
+                keyboard.add(*row)
                 row = []
-    
-        if row:
-            keyboard.row(*row)
+
+        # Add additional buttons
         keyboard.add(
-                            types.InlineKeyboardButton(
-                                text="Через администратора",
-                                url=f"t.me/Menejer_xizmati"  # Replace with admin's username
-                            )
-                        )
+            types.InlineKeyboardButton(
+                text="Через администратора",
+                url="t.me/Menejer_xizmati"  # Replace with admin's username
+            )
+        )
         keyboard.add(
             types.InlineKeyboardButton(
                 text="Условия перезаклада",
