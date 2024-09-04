@@ -169,7 +169,15 @@ def send_rayon_selection(call):
     user_data[user_id]["product_id"] = product_id
 
     response = requests.get(f'{API_ENDPOINT}rayon/?mahsulot_id={product_id}')
-    regions = response.json().get('results', [])
+    regions_data = response.json()
+
+    # Check if the response is a list or a dictionary
+    if isinstance(regions_data, dict):
+        regions = regions_data.get('results', [])
+    elif isinstance(regions_data, list):
+        regions = regions_data
+    else:
+        regions = []
 
     if regions:
         keyboard = types.InlineKeyboardMarkup(row_width=2)
@@ -187,7 +195,15 @@ def send_korinish_selection(call):
     user_data[user_id]["region_id"] = region_id
 
     response = requests.get(f'{API_ENDPOINT}korinish/?rayon_id={region_id}')
-    types_ = response.json().get('results', [])
+    types_data = response.json()
+
+    # Check if the response is a list or a dictionary
+    if isinstance(types_data, dict):
+        types_ = types_data.get('results', [])
+    elif isinstance(types_data, list):
+        types_ = types_data
+    else:
+        types_ = []
 
     if types_:
         keyboard = types.InlineKeyboardMarkup(row_width=2)
