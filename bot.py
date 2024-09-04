@@ -21,10 +21,10 @@ order_message_ids = {}
 # Generate CAPTCHA
 def generate_captcha():
     captcha_text = str(random.randint(100000, 999999))
-    background = Image.open("s.jpg").convert("RGBA")
+    background = Image.open("bot/s.jpg").convert("RGBA")
     image = background.resize((200, 100))
     draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype("arialbd.TTF", size=36)
+    font = ImageFont.truetype("arialbd.ttf", size=36)
 
     for i, char in enumerate(captcha_text):
         x = random.randint(10 + i * 30, 30 + i * 30)
@@ -33,8 +33,6 @@ def generate_captcha():
 
     logger.info(f"Captcha generated: {captcha_text}")
     return captcha_text, image
-
-
 
 @bot.message_handler(commands=['start'])
 def send_captcha_or_greet(message):
@@ -275,18 +273,22 @@ def handle_payment(call):
     order_id = call.data.split("_")[2]
     user_id = call.from_user.id
     user_data[user_id]["order_id"] = order_id
+    narxi = requests.get(f'{API_ENDPOINT}mahsulot/{user_data[user_id]["product_id"]}/').json().get('narxi', 'Unknown')
 
-    # Fetch product price
-    response = requests.get(f'{API_ENDPOINT}mahsulot/{user_data[user_id]["product_id"]}/')
-    narxi = response.json().get('narxi', 'Unknown')
-
-    # Define an async function to fetch cards
+    # Fetch and display cards
     async def fetch_cards():
         async with aiohttp.ClientSession() as session:
             async with session.get(f'{API_ENDPOINT}card/') as response:
                 if response.status == 200:
                     data = await response.json()
-                    card_data = data.get("results", [])
+                    if isinstance(data, list):
+                        card_data = data  # data o'z-o'zidan ro'yxat ekan
+                    elif isinstance(data, dict) and "results" in data:
+                        card_data = data.get("results", [])
+                    else:
+                        card_data = []
+
+
                     if card_data:
                         keyboard = types.InlineKeyboardMarkup(row_width=2)
                         for card in card_data:
@@ -296,22 +298,27 @@ def handle_payment(call):
                                     callback_data=f"select_card_{card['id']}"
                                 )
                             )
+                        keyboard.add(
+                            types.InlineKeyboardButton(
+                                text="Через администратора",
+                                url=f"t.me/sayfullayev_0204"  # Replace with admin's username
+                            )
+                        )
                         bot.send_message(call.message.chat.id, f"Ваш актуальный баланс {narxi}.\nЧем вы будете оплачивать?", reply_markup=keyboard)
                     else:
                         bot.send_message(call.message.chat.id, "Karta ma'lumotlari topilmadi yoki karta ro'yxati bo'sh.")
                 else:
                     bot.send_message(call.message.chat.id, "Karta ma'lumotlarini olishda xatolik yuz berdi.")
-    
-    # Run the async function in the event loop
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(fetch_cards())
-    
+
+    import asyncio
+    asyncio.run(fetch_cards())
+
+
 @bot.callback_query_handler(lambda call: call.data.startswith("select_card_"))
 def display_card_details(call):
     card_id = call.data.split("_")[2]
     user_id = call.from_user.id
 
-    # Define an async function to fetch card details
     async def fetch_card_details():
         async with aiohttp.ClientSession() as session:
             async with session.get(f'{API_ENDPOINT}card/{card_id}/') as response:
@@ -334,10 +341,8 @@ def display_card_details(call):
                     bot.send_message(call.message.chat.id, f"Информация о карте:\n{card_info}\n\nСовершите платеж на эту карту.", reply_markup=pay_button)
                 else:
                     bot.send_message(call.message.chat.id, "Karta ma'lumotlarini olishda xatolik yuz berdi.")
-    
-    # Run the async function in the event loop
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(fetch_card_details())
+    import asyncio
+    asyncio.run(fetch_card_details())
 
 @bot.callback_query_handler(lambda call: call.data.startswith("cancel_order_"))
 def cancel_order(call):
@@ -366,6 +371,7 @@ def request_payment_details(call):
 
     if user_id in user_data:
         user_data[user_id]["card_id"] = card_id
+
         bot.send_message(call.message.chat.id, "Пожалуйста, введите сумму платежа:")
 
 @bot.message_handler(func=lambda message: message.text.isdigit() and message.from_user.id in user_data)
@@ -374,6 +380,7 @@ def handle_payment_amount(message):
     if user_id in user_data:
         payment_amount = message.text
         user_data[user_id]["payment_amount"] = payment_amount
+
         bot.send_message(message.chat.id, "Пожалуйста, загрузите изображение платежа.")
 
 @bot.message_handler(content_types=['photo'])
