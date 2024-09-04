@@ -21,7 +21,7 @@ order_message_ids = {}
 # Generate CAPTCHA
 def generate_captcha():
     captcha_text = str(random.randint(100000, 999999))
-    background = Image.open("bot/s.jpg").convert("RGBA")
+    background = Image.open("s.jpg").convert("RGBA")
     image = background.resize((200, 100))
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype("arialbd.ttf", size=36)
