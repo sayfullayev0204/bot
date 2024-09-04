@@ -27,7 +27,7 @@ def generate_captcha():
 
     # Shrift faylini bot papkasida to‘g‘ri yo‘l bilan yuklash
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    font_path = os.path.join(BASE_DIR, "arialbd.ttf")
+    font_path = os.path.join(BASE_DIR, "arialbd.TTF")
     
     try:
         font = ImageFont.truetype(font_path, size=36)
