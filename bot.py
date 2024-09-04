@@ -96,7 +96,14 @@ def process_captcha_response(message):
 def send_city_selection(message):
     response = requests.get(f'{API_ENDPOINT}shaxar/')
     cities_data = response.json()
-    cities = cities_data.get('results', [])
+
+    # Check if cities_data is a list or a dictionary
+    if isinstance(cities_data, dict):
+        cities = cities_data.get('results', [])
+    elif isinstance(cities_data, list):
+        cities = cities_data
+    else:
+        cities = []
 
     if cities:
         keyboard = types.InlineKeyboardMarkup()
@@ -129,7 +136,6 @@ def send_city_selection(message):
         bot.send_message(message.chat.id, "Выберите город:", reply_markup=keyboard)
     else:
         bot.send_message(message.chat.id, "Hozircha hech qanday shahar mavjud emas.")
-
 @bot.callback_query_handler(func=lambda call: call.data.startswith("city_"))
 def send_product_selection(call):
     user_id = call.from_user.id
