@@ -135,7 +135,7 @@ def send_city_selection(message):
         # Send the message with the keyboard
         bot.send_message(message.chat.id, "Выберите город:", reply_markup=keyboard)
     else:
-        bot.send_message(message.chat.id, "Hozircha hech qanday shahar mavjud emas.")
+        bot.send_message(message.chat.id, "Пока нет доступных городов.")
 @bot.callback_query_handler(func=lambda call: call.data.startswith("city_"))
 def send_product_selection(call):
     user_id = call.from_user.id
@@ -275,16 +275,18 @@ def handle_payment(call):
     order_id = call.data.split("_")[2]
     user_id = call.from_user.id
     user_data[user_id]["order_id"] = order_id
-    narxi = requests.get(f'{API_ENDPOINT}mahsulot/{user_data[user_id]["product_id"]}/').json().get('narxi', 'Unknown')
 
-    # Fetch and display cards
+    # Fetch product price
+    response = requests.get(f'{API_ENDPOINT}mahsulot/{user_data[user_id]["product_id"]}/')
+    narxi = response.json().get('narxi', 'Unknown')
+
+    # Define an async function to fetch cards
     async def fetch_cards():
         async with aiohttp.ClientSession() as session:
             async with session.get(f'{API_ENDPOINT}card/') as response:
                 if response.status == 200:
                     data = await response.json()
                     card_data = data.get("results", [])
-
                     if card_data:
                         keyboard = types.InlineKeyboardMarkup(row_width=2)
                         for card in card_data:
@@ -294,19 +296,22 @@ def handle_payment(call):
                                     callback_data=f"select_card_{card['id']}"
                                 )
                             )
-                        
                         bot.send_message(call.message.chat.id, f"Ваш актуальный баланс {narxi}.\nЧем вы будете оплачивать?", reply_markup=keyboard)
                     else:
                         bot.send_message(call.message.chat.id, "Karta ma'lumotlari topilmadi yoki karta ro'yxati bo'sh.")
                 else:
                     bot.send_message(call.message.chat.id, "Karta ma'lumotlarini olishda xatolik yuz berdi.")
-    import asyncio
-    asyncio.run(fetch_cards())
+    
+    # Run the async function in the event loop
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(fetch_cards())
+    
 @bot.callback_query_handler(lambda call: call.data.startswith("select_card_"))
 def display_card_details(call):
     card_id = call.data.split("_")[2]
     user_id = call.from_user.id
 
+    # Define an async function to fetch card details
     async def fetch_card_details():
         async with aiohttp.ClientSession() as session:
             async with session.get(f'{API_ENDPOINT}card/{card_id}/') as response:
@@ -329,8 +334,10 @@ def display_card_details(call):
                     bot.send_message(call.message.chat.id, f"Информация о карте:\n{card_info}\n\nСовершите платеж на эту карту.", reply_markup=pay_button)
                 else:
                     bot.send_message(call.message.chat.id, "Karta ma'lumotlarini olishda xatolik yuz berdi.")
-    import asyncio
-    asyncio.run(fetch_card_details())
+    
+    # Run the async function in the event loop
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(fetch_card_details())
 
 @bot.callback_query_handler(lambda call: call.data.startswith("cancel_order_"))
 def cancel_order(call):
@@ -359,7 +366,6 @@ def request_payment_details(call):
 
     if user_id in user_data:
         user_data[user_id]["card_id"] = card_id
-
         bot.send_message(call.message.chat.id, "Пожалуйста, введите сумму платежа:")
 
 @bot.message_handler(func=lambda message: message.text.isdigit() and message.from_user.id in user_data)
@@ -368,7 +374,6 @@ def handle_payment_amount(message):
     if user_id in user_data:
         payment_amount = message.text
         user_data[user_id]["payment_amount"] = payment_amount
-
         bot.send_message(message.chat.id, "Пожалуйста, загрузите изображение платежа.")
 
 @bot.message_handler(content_types=['photo'])
