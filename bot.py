@@ -7,7 +7,7 @@ from telebot import types
 import requests
 import aiohttp
 
-API_TOKEN = "6804578580:AAEoZCZLRNUmr36YOWmriEO9HSVMsjTVOnc"  # Replace with your actual bot token
+API_TOKEN = "6804578580:AAF_urAMl6LAy20iaFehqAxsOEFd4K1P8Bs"  # Replace with your actual bot token
 API_ENDPOINT = "https://market-bot-fpv8.onrender.com/"  # Replace with your Django server URL
 
 bot = telebot.TeleBot(API_TOKEN)
