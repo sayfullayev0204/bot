@@ -21,20 +21,10 @@ order_message_ids = {}
 # Generate CAPTCHA
 def generate_captcha():
     captcha_text = str(random.randint(100000, 999999))
-    background = Image.open("s.jpg").convert("RGBA")
+    background = Image.open("bot/s.jpg").convert("RGBA")
     image = background.resize((200, 100))
     draw = ImageDraw.Draw(image)
-
-    # Shrift faylini bot papkasida to‘g‘ri yo‘l bilan yuklash
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    font_path = os.path.join(BASE_DIR, "arialbd.TTF")
-    
-    try:
-        font = ImageFont.truetype(font_path, size=36)
-    except IOError:
-        logger.error(f"Font file not found: {font_path}")
-        # Fallback to default font if the specified font is not found
-        font = ImageFont.load_default()
+    font = ImageFont.truetype("arialbd.ttf", size=36)
 
     for i, char in enumerate(captcha_text):
         x = random.randint(10 + i * 30, 30 + i * 30)
@@ -43,6 +33,7 @@ def generate_captcha():
 
     logger.info(f"Captcha generated: {captcha_text}")
     return captcha_text, image
+
 
 
 @bot.message_handler(commands=['start'])
