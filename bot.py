@@ -184,7 +184,7 @@ def send_rayon_selection(call):
             keyboard.add(button)
         bot.send_message(call.message.chat.id, "Выберите район:", reply_markup=keyboard)
     else:
-        bot.send_message(call.message.chat.id, "Bu mahsulot uchun hech qanday rayon mavjud emas.")
+        bot.send_message(call.message.chat.id, "BДля этого продукта нет доступного региона.")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("region_"))
 def send_korinish_selection(call):
