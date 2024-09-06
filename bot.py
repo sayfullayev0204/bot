@@ -13,11 +13,11 @@ def send_welcome(message):
     telegram_id = message.from_user.id
 
     # Check if the user is already registered
-    response = requests.get(f'https://uzum-production.up.railway.app/api/check_user/{telegram_id}/')
+    response = requests.get(f'http://127.0.0.1:8000/api/check_user/{telegram_id}/')
 
     if response.status_code == 200 and response.json().get('registered'):
         # Check payment status
-        payment_status_response = requests.get(f'https://uzum-production.up.railway.app/api/check_payment/{telegram_id}/')
+        payment_status_response = requests.get(f'http://127.0.0.1:8000/api/check_payment/{telegram_id}/')
         payment_status = payment_status_response.json().get('payment_made', False)
 
         if payment_status:
@@ -26,7 +26,7 @@ def send_welcome(message):
             bot.send_message(message.chat.id, "Siz to'lov qilmagansiz. To'lovni amalga oshirishingiz kerak.", reply_markup=payment_button())
     else:
         # If not registered, send registration prompt with photo and button
-        with open('a.png', 'rb') as photo:
+        with open('bot/a.png', 'rb') as photo:
             bot.send_photo(message.chat.id, photo, caption="Xush kelibsiz! Ro'yxatdan o'tish uchun tugmani bosing.", reply_markup=registration_button())
 
 # Inline keyboard with registration button
@@ -56,7 +56,7 @@ def process_phone_step(message):
     user_data['phone'] = message.text
     user_data['telegram_id'] = message.from_user.id
 
-    response = requests.post('https://uzum-production.up.railway.app/api/register/', json=user_data)
+    response = requests.post('http://127.0.0.1:8000/api/register/', json=user_data)
 
     if response.status_code == 201:
         bot.send_message(message.chat.id, "Ro'yxatdan o'tdingiz. Endi kurs uchun to'lov qiling.", reply_markup=payment_button())
@@ -73,7 +73,7 @@ def payment_button():
 # Callback handler for payment button
 @bot.callback_query_handler(func=lambda call: call.data == 'payment')
 def process_payment(call):
-    response = requests.get('https://uzum-production.up.railway.app/api/cards/')
+    response = requests.get('http://127.0.0.1:8000/api/cards/')
     cards = response.json().get('cards', [])
 
     if cards:
@@ -91,7 +91,7 @@ def process_payment(call):
 def handle_card_selection(call):
     selected_card_name = call.data.split('_')[1]
 
-    response = requests.get('https://uzum-production.up.railway.app/api/cards/')
+    response = requests.get('http://127.0.0.1:8000/api/cards/')
     cards = response.json().get('cards', [])
 
     for card in cards:
@@ -111,15 +111,22 @@ def handle_card_selection(call):
             markup.add(telebot.types.InlineKeyboardButton("To'lovni amalga oshirish", callback_data='enter_payment_description'))
             bot.send_message(call.message.chat.id, "To'lovni amalga oshirish uchun quyidagi tugmani bosing:", reply_markup=markup)
             break
+import os
+import requests
 
-# Handle payment description input
+user_data = {}
+
 @bot.callback_query_handler(func=lambda call: call.data == 'enter_payment_description')
 def enter_payment_description(call):
     bot.send_message(call.message.chat.id, "To'lov izohini kiriting:")
     bot.register_next_step_handler(call.message, process_payment_description)
 
 def process_payment_description(message):
-    user_data['payment_description'] = message.text
+    telegram_id = message.from_user.id
+    if telegram_id not in user_data:
+        user_data[telegram_id] = {}
+
+    user_data[telegram_id]['payment_description'] = message.text
     bot.send_message(message.chat.id, "To'lov chekini yuklang:")
     bot.register_next_step_handler(message, process_payment_receipt)
 
@@ -135,23 +142,30 @@ def process_payment_receipt(message):
         file_info = bot.get_file(receipt_image)
         downloaded_file = bot.download_file(file_info.file_path)
 
+        # Ensure the receipts directory exists
+        directory = 'receipts'
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
         # Save the image
-        with open(f'receipts/{telegram_id}.jpg', 'wb') as new_file:
+        file_path = f'{directory}/{telegram_id}.jpg'
+        with open(file_path, 'wb') as new_file:
             new_file.write(downloaded_file)
 
         # Send the payment data to Django API
-        files = {'receipt_image': open(f'receipts/{telegram_id}.jpg', 'rb')}
-        data = {
-            'payment_description': user_data.get('payment_description', 'No description')
-        }
+        with open(file_path, 'rb') as file:
+            files = {'receipt_image': file}
+            data = {
+                'payment_description': user_data.get(telegram_id, {}).get('payment_description', 'No description')
+            }
 
-        # Make the request to the Django API
-        response = requests.post(f'https://uzum-production.up.railway.app/api/payment/{telegram_id}/', data=data, files=files)
+            # Make the request to the Django API
+            response = requests.post(f'https://uzum-production.up.railway.app/api/payment/{telegram_id}/', data=data, files=files)
 
         if response.status_code == 201:
             bot.send_message(chat_id, "To'lov muvaffaqiyatli amalga oshirildi!\nTasdiqlanishini kuting ...")
         else:
-            bot.send_message(chat_id, "To'lovni amalga oshirishda xatolik yuz berdi.")
+            bot.send_message(chat_id, f"To'lovni amalga oshirishda xatolik yuz berdi. Xato kodi: {response.status_code}")
     else:
         bot.send_message(chat_id, "Iltimos, to'lov chekini yuklang.")
 
