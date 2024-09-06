@@ -13,11 +13,11 @@ def send_welcome(message):
     telegram_id = message.from_user.id
 
     # Check if the user is already registered
-    response = requests.get(f'http://127.0.0.1:8000/api/check_user/{telegram_id}/')
+    response = requests.get(f'https://uzum-production.up.railway.app/api/check_user/{telegram_id}/')
 
     if response.status_code == 200 and response.json().get('registered'):
         # Check payment status
-        payment_status_response = requests.get(f'http://127.0.0.1:8000/api/check_payment/{telegram_id}/')
+        payment_status_response = requests.get(f'https://uzum-production.up.railway.app/api/check_payment/{telegram_id}/')
         payment_status = payment_status_response.json().get('payment_made', False)
 
         if payment_status:
@@ -56,7 +56,7 @@ def process_phone_step(message):
     user_data['phone'] = message.text
     user_data['telegram_id'] = message.from_user.id
 
-    response = requests.post('http://127.0.0.1:8000/api/register/', json=user_data)
+    response = requests.post('https://uzum-production.up.railway.app/api/register/', json=user_data)
 
     if response.status_code == 201:
         bot.send_message(message.chat.id, "Ro'yxatdan o'tdingiz. Endi kurs uchun to'lov qiling.", reply_markup=payment_button())
@@ -73,7 +73,7 @@ def payment_button():
 # Callback handler for payment button
 @bot.callback_query_handler(func=lambda call: call.data == 'payment')
 def process_payment(call):
-    response = requests.get('http://127.0.0.1:8000/api/cards/')
+    response = requests.get('https://uzum-production.up.railway.app/api/cards/')
     cards = response.json().get('cards', [])
 
     if cards:
@@ -91,7 +91,7 @@ def process_payment(call):
 def handle_card_selection(call):
     selected_card_name = call.data.split('_')[1]
 
-    response = requests.get('http://127.0.0.1:8000/api/cards/')
+    response = requests.get('https://uzum-production.up.railway.app/api/cards/')
     cards = response.json().get('cards', [])
 
     for card in cards:
