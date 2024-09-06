@@ -1,4 +1,4 @@
-API_TOKEN = '7189070743:AAEYh_q9VKtGwT9yVZEodB1hmQrkzGmbx9g'
+API_TOKEN = '718907074\3:AAEYh_q9VKtGwT9yVZEodB1hmQrkzGmbx9g'
 import telebot
 import requests
 
