@@ -26,7 +26,7 @@ def send_welcome(message):
             bot.send_message(message.chat.id, "Siz to'lov qilmagansiz. To'lovni amalga oshirishingiz kerak.", reply_markup=payment_button())
     else:
         # If not registered, send registration prompt with photo and button
-        with open('bot/a.png', 'rb') as photo:
+        with open('a.png', 'rb') as photo:
             bot.send_photo(message.chat.id, photo, caption="Xush kelibsiz! Ro'yxatdan o'tish uchun tugmani bosing.", reply_markup=registration_button())
 
 # Inline keyboard with registration button
