@@ -1,426 +1,158 @@
-import random
-import logging
-from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
+API_TOKEN = '7189070743:AAEYh_q9VKtGwT9yVZEodB1hmQrkzGmbx9g'
 import telebot
-from telebot import types
 import requests
-import aiohttp
-
-API_TOKEN = "6804578580:AAFgkIvNyRzzLRhaouWCzyBRJ-87jUk6OAs"  # Replace with your actual bot token
-API_ENDPOINT = "http://market-bot-fpv8.onrender.com/"  # Replace with your Django server URL
 
 bot = telebot.TeleBot(API_TOKEN)
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
-user_captchas = {}
+# Global variable to store user data
 user_data = {}
-order_message_ids = {}
 
-# Generate CAPTCHA
-def generate_captcha():
-    captcha_text = str(random.randint(100000, 999999))
-    background = Image.open("bot/s.jpg").convert("RGBA")
-    image = background.resize((200, 100))
-    draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype("arialbd.ttf", size=36)
-
-    for i, char in enumerate(captcha_text):
-        x = random.randint(10 + i * 30, 30 + i * 30)
-        y = random.randint(20, 50)
-        draw.text((x, y), char, font=font, fill=(0, 0, 0))
-
-    logger.info(f"Captcha generated: {captcha_text}")
-    return captcha_text, image
-
+# Start command handler
 @bot.message_handler(commands=['start'])
-def send_captcha_or_greet(message):
-    user_id = message.from_user.id
-    logger.info(f"/start command received from user {user_id}")
+def send_welcome(message):
+    telegram_id = message.from_user.id
 
-    response = requests.get(f'{API_ENDPOINT}users/{user_id}/')
+    # Check if the user is already registered
+    response = requests.get(f'https://uzum-production.up.railway.app/api/check_user/{telegram_id}/')
 
-    if response.status_code == 200:
-        logger.info(f"User {user_id} is already registered.")
-        bot.send_message(message.chat.id, "Привет! Пожалуйста")
-        send_city_selection(message)
-    elif response.status_code == 404:
-        logger.info(f"User {user_id} is not registered, sending captcha.")
-        captcha_text, captcha_image = generate_captcha()
+    if response.status_code == 200 and response.json().get('registered'):
+        # Check payment status
+        payment_status_response = requests.get(f'https://uzum-production.up.railway.app/api/check_payment/{telegram_id}/')
+        payment_status = payment_status_response.json().get('payment_made', False)
 
-        bio = BytesIO()
-        captcha_image.save(bio, format='PNG')
-        bio.seek(0)
-
-        bot.send_photo(message.chat.id, photo=bio, caption="Пожалуйста, отправьте код, показанный на изображении:")
-        bio.close()  # Xotirani tozalash uchun obyektni yopamiz
-
-        user_captchas[user_id] = {
-            "captcha_text": captcha_text,
-            "name": message.from_user.first_name,
-            "username": message.from_user.username
-        }
-    else:
-        logger.error(f"Error checking user {user_id} registration status. HTTP Status: {response.status_code}")
-        bot.send_message(message.chat.id, "Произошла ошибка. Повторите попытку позже.")
-
-@bot.message_handler(func=lambda message: user_captchas.get(message.from_user.id))
-def process_captcha_response(message):
-    user_id = message.from_user.id
-    if user_id in user_captchas:
-        captcha_text = user_captchas[user_id]["captcha_text"]
-        logger.info(f"Received captcha response from user {user_id}: {message.text}")
-
-        if message.text == captcha_text:
-            data = {
-                "telegram_id": user_id,
-                "name": user_captchas[user_id]["name"],
-                "username": user_captchas[user_id]["username"],
-            }
-            response = requests.post(f'{API_ENDPOINT}users/', json=data)
-            if response.status_code == 201:
-                logger.info(f"User {user_id} successfully registered.")
-                bot.send_message(message.chat.id, "Привет! Вы зарегистрировались.")
-                send_city_selection(message)
-            else:
-                logger.error(f"Failed to register user {user_id}. HTTP Status: {response.status_code}")
-                bot.send_message(message.chat.id, "Во время регистрации произошла ошибка. Повторите попытку позже.")
-            del user_captchas[user_id]
+        if payment_status:
+            bot.send_message(message.chat.id, "Assalom!\nSiz ro'yxatdan o'tgansiz va to'lov qilgansiz.")
         else:
-            logger.warning(f"Incorrect captcha response from user {user_id}. Expected: {captcha_text}, Got: {message.text}")
-            bot.send_message(message.chat.id, "Код ошибки. Пожалуйста, попробуйте еще раз.")
-
-def send_city_selection(message):
-    response = requests.get(f'{API_ENDPOINT}shaxar/')
-    cities_data = response.json()
-
-    # Check if cities_data is a list or a dictionary
-    if isinstance(cities_data, dict):
-        cities = cities_data.get('results', [])
-    elif isinstance(cities_data, list):
-        cities = cities_data
+            bot.send_message(message.chat.id, "Siz to'lov qilmagansiz. To'lovni amalga oshirishingiz kerak.", reply_markup=payment_button())
     else:
-        cities = []
+        # If not registered, send registration prompt with photo and button
+        with open('bot/a.png', 'rb') as photo:
+            bot.send_photo(message.chat.id, photo, caption="Xush kelibsiz! Ro'yxatdan o'tish uchun tugmani bosing.", reply_markup=registration_button())
 
-    if cities:
-        keyboard = types.InlineKeyboardMarkup()
+# Inline keyboard with registration button
+def registration_button():
+    markup = telebot.types.InlineKeyboardMarkup()
+    btn = telebot.types.InlineKeyboardButton("Ro'yxatdan o'tish", callback_data='register')
+    markup.add(btn)
+    return markup
 
-        row = []
-        for index, city in enumerate(cities):
-            button = types.InlineKeyboardButton(text=city['nomi'], callback_data=f"city_{city['id']}")
-            row.append(button)
-            
-            # Add row after every two buttons or if it's the last button
-            if (index + 1) % 2 == 0 or index == len(cities) - 1:
-                keyboard.add(*row)
-                row = []
+# Callback handler for registration button
+@bot.callback_query_handler(func=lambda call: call.data == 'register')
+def process_registration(call):
+    bot.send_message(call.message.chat.id, "Ismingizni kiriting:")
+    bot.register_next_step_handler(call.message, process_name_step)
 
-        # Add additional buttons
-        keyboard.add(
-            types.InlineKeyboardButton(
-                text="Через администратора",
-                url="t.me/Menejer_xizmati"  # Replace with admin's username
-            )
-        )
-        keyboard.add(
-            types.InlineKeyboardButton(
-                text="Условия перезаклада",
-                url="https://telegra.ph/Pretenzii-po-nenahodu-09-03"
-            )
-        )
+def process_name_step(message):
+    user_data['name'] = message.text
+    bot.send_message(message.chat.id, "Familiyangizni kiriting:")
+    bot.register_next_step_handler(message, process_lastname_step)
 
-        # Send the message with the keyboard
-        bot.send_message(message.chat.id, "Выберите город:", reply_markup=keyboard)
-    else:
-        bot.send_message(message.chat.id, "Пока нет доступных городов.")
-@bot.callback_query_handler(func=lambda call: call.data.startswith("city_"))
-def send_product_selection(call):
-    user_id = call.from_user.id
-    city_id = call.data.split("_")[1]
-    user_data[user_id] = {"city_id": city_id, "name": call.from_user.first_name}
+def process_lastname_step(message):
+    user_data['lastname'] = message.text
+    bot.send_message(message.chat.id, "Telefon raqamingizni kiriting:")
+    bot.register_next_step_handler(message, process_phone_step)
 
-    response = requests.get(f'{API_ENDPOINT}mahsulot/?shaxar_id={city_id}')
-    products_data = response.json()
+def process_phone_step(message):
+    user_data['phone'] = message.text
+    user_data['telegram_id'] = message.from_user.id
 
-    # Check if the response is a list or a dictionary
-    if isinstance(products_data, dict):
-        products = products_data.get('results', [])
-    elif isinstance(products_data, list):
-        products = products_data
-    else:
-        products = []
-
-    if products:
-        keyboard = types.InlineKeyboardMarkup(row_width=2)
-        for product in products:
-            button = types.InlineKeyboardButton(text=product['nomi'], callback_data=f"product_{product['id']}")
-            keyboard.add(button)
-        bot.send_message(call.message.chat.id, "Выберите товар:", reply_markup=keyboard)
-    else:
-        bot.send_message(call.message.chat.id, "Пока нет доступных городов.")
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("product_"))
-def send_rayon_selection(call):
-    user_id = call.from_user.id
-    product_id = call.data.split("_")[1]
-    user_data[user_id]["product_id"] = product_id
-
-    response = requests.get(f'{API_ENDPOINT}rayon/?mahsulot_id={product_id}')
-    regions_data = response.json()
-
-    # Check if the response is a list or a dictionary
-    if isinstance(regions_data, dict):
-        regions = regions_data.get('results', [])
-    elif isinstance(regions_data, list):
-        regions = regions_data
-    else:
-        regions = []
-
-    if regions:
-        keyboard = types.InlineKeyboardMarkup(row_width=2)
-        for region in regions:
-            button = types.InlineKeyboardButton(text=region['nomi'], callback_data=f"region_{region['id']}")
-            keyboard.add(button)
-        bot.send_message(call.message.chat.id, "Выберите район:", reply_markup=keyboard)
-    else:
-        bot.send_message(call.message.chat.id, "BДля этого продукта нет доступного региона.")
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("region_"))
-def send_korinish_selection(call):
-    user_id = call.from_user.id
-    region_id = call.data.split("_")[1]
-    user_data[user_id]["region_id"] = region_id
-
-    response = requests.get(f'{API_ENDPOINT}korinish/?rayon_id={region_id}')
-    types_data = response.json()
-
-    # Check if the response is a list or a dictionary
-    if isinstance(types_data, dict):
-        types_ = types_data.get('results', [])
-    elif isinstance(types_data, list):
-        types_ = types_data
-    else:
-        types_ = []
-
-    if types_:
-        keyboard = types.InlineKeyboardMarkup(row_width=2)
-        for korinish in types_:
-            button = types.InlineKeyboardButton(text=korinish['nomi'], callback_data=f"korinish_{korinish['id']}")
-            keyboard.add(button)
-        bot.send_message(call.message.chat.id, "Вид товара:", reply_markup=keyboard)
-    else:
-        bot.send_message(call.message.chat.id, "Bu rayon uchun hech qanday ko'rinish mavjud emas.")
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("korinish_"))
-def create_order(call):
-    user_id = call.from_user.id
-    korinish_id = call.data.split("_")[1]
-    user_data[user_id]["korinish_id"] = korinish_id
-
-    # Fetching city, product, region, and type names
-    city_name = requests.get(f'{API_ENDPOINT}shaxar/{user_data[user_id]["city_id"]}/').json().get('nomi', 'Unknown')
-    product_name = requests.get(f'{API_ENDPOINT}mahsulot/{user_data[user_id]["product_id"]}/').json().get('nomi', 'Unknown')
-    narxi = requests.get(f'{API_ENDPOINT}mahsulot/{user_data[user_id]["product_id"]}/').json().get('narxi', 'Unknown')
-    region_name = requests.get(f'{API_ENDPOINT}rayon/{user_data[user_id]["region_id"]}/').json().get('nomi', 'Unknown')
-    type_name = requests.get(f'{API_ENDPOINT}korinish/{korinish_id}/').json().get('nomi', 'Unknown')
-
-    user_name = user_data[user_id].get("name", 'Anonymous')
-
-    order_data = {
-        "telegram_id": user_id,
-        "shaxar_id": user_data[user_id]["city_id"],
-        "mahsulot_id": user_data[user_id]["product_id"],
-        "rayon_id": user_data[user_id]["region_id"],
-        "korinish_id": korinish_id,
-        "name": user_name  
-    }
-
-    response = requests.post(f'{API_ENDPOINT}orders/create_order/', data=order_data)
+    response = requests.post('https://uzum-production.up.railway.app/api/register/', json=user_data)
 
     if response.status_code == 201:
-        response_data = response.json()
-        order_id = response_data.get('order_id')
-        created_at = response_data.get('created_at')
+        bot.send_message(message.chat.id, "Ro'yxatdan o'tdingiz. Endi kurs uchun to'lov qiling.", reply_markup=payment_button())
+    else:
+        bot.send_message(message.chat.id, "Ro'yxatdan o'tishda xatolik yuz berdi.")
 
-        # Save order_id to user_data
-        user_data[user_id]["order_id"] = order_id
+# Payment button
+def payment_button():
+    markup = telebot.types.InlineKeyboardMarkup()
+    btn = telebot.types.InlineKeyboardButton("To'lov qilish", callback_data='payment')
+    markup.add(btn)
+    return markup
 
-        order_details = (
-            f"Идентификатор вашей покупки: #{order_id}\n\n"
+# Callback handler for payment button
+@bot.callback_query_handler(func=lambda call: call.data == 'payment')
+def process_payment(call):
+    response = requests.get('https://uzum-production.up.railway.app/api/cards/')
+    cards = response.json().get('cards', [])
 
-            f"Товар и объем: {product_name}\n"
-            f"Сумма к оплате: {narxi} сум\n"
-            f"Местоположение: {city_name}\n"            
-            f"Локация/Ближащая станция: {region_name}\n"
-            f"Заказанное время: {created_at}\n\n"
-            "Пожалуйста, перейдите к оплате, нажав кнопку ОПЛАТИТЬ.\nОбратите внимание: после начала процесса оплаты у вас будет 48 час для её завершения."
-        )
+    if cards:
+        markup = telebot.types.InlineKeyboardMarkup()
+        for card in cards:
+            card_name = card['card_name']
+            markup.add(telebot.types.InlineKeyboardButton(card_name, callback_data=f'card_{card_name}'))
         
-        keyboard = types.InlineKeyboardMarkup()
-        keyboard.add(
-            types.InlineKeyboardButton(text="Оплатит", callback_data=f"pay_order_{order_id}"),
-            types.InlineKeyboardButton(text="Отмена", callback_data=f"cancel_order_{order_id}")
-        )
-
-        msg = bot.send_message(call.message.chat.id, order_details, reply_markup=keyboard)
-        order_message_ids[user_id] = msg.message_id
+        bot.send_message(call.message.chat.id, "Quyidagi kartalardan birini tanlang:", reply_markup=markup)
     else:
-        bot.send_message(call.message.chat.id, "Buyurtmani yaratishda xatolik yuz berdi. Keyinroq qayta urinib ko'ring.")
+        bot.send_message(call.message.chat.id, "To'lov uchun hech qanday karta mavjud emas.")
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("pay_order_"))
-def handle_payment(call):
-    order_id = call.data.split("_")[2]
-    user_id = call.from_user.id
-    user_data[user_id]["order_id"] = order_id
-    narxi = requests.get(f'{API_ENDPOINT}mahsulot/{user_data[user_id]["product_id"]}/').json().get('narxi', 'Unknown')
+# Handle card selection
+@bot.callback_query_handler(func=lambda call: call.data.startswith('card_'))
+def handle_card_selection(call):
+    selected_card_name = call.data.split('_')[1]
 
-    # Fetch and display cards
-    async def fetch_cards():
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f'{API_ENDPOINT}card/') as response:
-                if response.status == 200:
-                    data = await response.json()
-                    if isinstance(data, list):
-                        card_data = data  # data o'z-o'zidan ro'yxat ekan
-                    elif isinstance(data, dict) and "results" in data:
-                        card_data = data.get("results", [])
-                    else:
-                        card_data = []
+    response = requests.get('https://uzum-production.up.railway.app/api/cards/')
+    cards = response.json().get('cards', [])
 
+    for card in cards:
+        if card['card_name'] == selected_card_name:
+            card_user = card['card_user']
+            card_number = card['card_number']
 
-                    if card_data:
-                        keyboard = types.InlineKeyboardMarkup(row_width=2)
-                        for card in card_data:
-                            keyboard.add(
-                                types.InlineKeyboardButton(
-                                    text=card['card_name'],
-                                    callback_data=f"select_card_{card['id']}"
-                                )
-                            )
-                        keyboard.add(
-                            types.InlineKeyboardButton(
-                                text="Через администратора",
-                                url=f"t.me/sayfullayev_0204"  # Replace with admin's username
-                            )
-                        )
-                        bot.send_message(call.message.chat.id, f"Ваш актуальный баланс {narxi}.\nЧем вы будете оплачивать?", reply_markup=keyboard)
-                    else:
-                        bot.send_message(call.message.chat.id, "Karta ma'lumotlari topilmadi yoki karta ro'yxati bo'sh.")
-                else:
-                    bot.send_message(call.message.chat.id, "Karta ma'lumotlarini olishda xatolik yuz berdi.")
+            bot.send_message(call.message.chat.id, f"Karta ma'lumotlari:\n"
+                                                   f"Karta nomi: {selected_card_name}\n"
+                                                   f"Foydalanuvchi: {card_user}\n"
+                                                   f"Karta raqami: {card_number}")
 
-    import asyncio
-    asyncio.run(fetch_cards())
+            # Store selected card in user_data
+            user_data['selected_card'] = selected_card_name
 
+            markup = telebot.types.InlineKeyboardMarkup()
+            markup.add(telebot.types.InlineKeyboardButton("To'lovni amalga oshirish", callback_data='enter_payment_description'))
+            bot.send_message(call.message.chat.id, "To'lovni amalga oshirish uchun quyidagi tugmani bosing:", reply_markup=markup)
+            break
 
-@bot.callback_query_handler(lambda call: call.data.startswith("select_card_"))
-def display_card_details(call):
-    card_id = call.data.split("_")[2]
-    user_id = call.from_user.id
+# Handle payment description input
+@bot.callback_query_handler(func=lambda call: call.data == 'enter_payment_description')
+def enter_payment_description(call):
+    bot.send_message(call.message.chat.id, "To'lov izohini kiriting:")
+    bot.register_next_step_handler(call.message, process_payment_description)
 
-    async def fetch_card_details():
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f'{API_ENDPOINT}card/{card_id}/') as response:
-                if response.status == 200:
-                    card = await response.json()
-                    card_info = (
-                        f"Имя карты: {card['card_name']}\n"
-                        f"Пользователь карты: {card['card_user']}\n"
-                        f"Номер карты: {card['card_number']}"
-                    )
+def process_payment_description(message):
+    user_data['payment_description'] = message.text
+    bot.send_message(message.chat.id, "To'lov chekini yuklang:")
+    bot.register_next_step_handler(message, process_payment_receipt)
 
-                    pay_button = types.InlineKeyboardMarkup()
-                    pay_button.add(
-                        types.InlineKeyboardButton(
-                            text="Внести платеж",
-                            callback_data=f"confirm_payment_{user_data[user_id]['order_id']}_{card_id}"
-                        )
-                    )
-                    
-                    bot.send_message(call.message.chat.id, f"Информация о карте:\n{card_info}\n\nСовершите платеж на эту карту.", reply_markup=pay_button)
-                else:
-                    bot.send_message(call.message.chat.id, "Karta ma'lumotlarini olishda xatolik yuz berdi.")
-    import asyncio
-    asyncio.run(fetch_card_details())
+# Handle payment receipt input
+def process_payment_receipt(message):
+    chat_id = message.chat.id
+    telegram_id = message.from_user.id
 
-@bot.callback_query_handler(lambda call: call.data.startswith("cancel_order_"))
-def cancel_order(call):
-    user_id = call.from_user.id
-    order_id = call.data.split("_")[2]
+    if message.content_type == 'photo':
+        receipt_image = message.photo[-1].file_id
 
-    # Delete the order details message
-    if user_id in order_message_ids:
-        chat_id = call.message.chat.id
-        try:
-            bot.delete_message(chat_id, order_message_ids[user_id])
-        except Exception as e:
-            print(f"Failed to delete message: {e}")
+        # Download the image
+        file_info = bot.get_file(receipt_image)
+        downloaded_file = bot.download_file(file_info.file_path)
 
-    response = requests.delete(f'{API_ENDPOINT}order/{order_id}/')
+        # Save the image
+        with open(f'receipts/{telegram_id}.jpg', 'wb') as new_file:
+            new_file.write(downloaded_file)
 
-    if response.status_code == 204:
-        bot.send_message(call.message.chat.id, f"Идентификатор заказа: #{order_id} был отменен и удален.")
-    else:
-        bot.send_message(call.message.chat.id, "Buyurtmani bekor qilishda xatolik yuz berdi.")
+        # Send the payment data to Django API
+        files = {'receipt_image': open(f'receipts/{telegram_id}.jpg', 'rb')}
+        data = {
+            'payment_description': user_data.get('payment_description', 'No description')
+        }
 
-@bot.callback_query_handler(lambda call: call.data.startswith("confirm_payment_"))
-def request_payment_details(call):
-    user_id = call.from_user.id
-    order_id, card_id = call.data.split("_")[2], call.data.split("_")[3]
+        # Make the request to the Django API
+        response = requests.post(f'https://uzum-production.up.railway.app/api/payment/{telegram_id}/', data=data, files=files)
 
-    if user_id in user_data:
-        user_data[user_id]["card_id"] = card_id
-
-        bot.send_message(call.message.chat.id, "Пожалуйста, введите сумму платежа:")
-
-@bot.message_handler(func=lambda message: message.text.isdigit() and message.from_user.id in user_data)
-def handle_payment_amount(message):
-    user_id = message.from_user.id
-    if user_id in user_data:
-        payment_amount = message.text
-        user_data[user_id]["payment_amount"] = payment_amount
-
-        bot.send_message(message.chat.id, "Пожалуйста, загрузите изображение платежа.")
-
-@bot.message_handler(content_types=['photo'])
-def handle_payment_receipt(message):
-    user_id = message.from_user.id
-
-    if user_id in user_data:
-        receipt_photo = message.photo[-1].file_id
-        payment_amount = user_data[user_id].get("payment_amount")
-        order_id = user_data[user_id].get("order_id")
-        card_id = user_data[user_id].get("card_id")
-
-        if payment_amount and order_id:
-            file_info = bot.get_file(receipt_photo)
-            file_url = f'https://api.telegram.org/file/bot{API_TOKEN}/{file_info.file_path}'
-            files = {'receipt_image': (receipt_photo, requests.get(file_url).content)}
-
-            data = {
-                "telegram_id": user_id,
-                "payment_amount": payment_amount,
-            }
-
-            try:
-                response = requests.post(f'{API_ENDPOINT}order/{order_id}/payment/', data=data, files=files)
-                if response.status_code == 200:
-                    bot.send_message(message.chat.id, "Платеж получен, ждем подтверждения...")
-                    del user_data[user_id]
-                    if user_id in order_message_ids:
-                        bot.delete_message(message.chat.id, order_message_ids[user_id])
-                        del order_message_ids[user_id]
-                else:
-                    bot.send_message(message.chat.id, "To'lovni saqlashda xatolik yuz berdi. Keyinroq qayta urinib ko'ring.")
-            except requests.RequestException as e:
-                bot.send_message(message.chat.id, "Serverga ulanishda xatolik yuz berdi.")
-                print(f"Request error: {e}")
+        if response.status_code == 201:
+            bot.send_message(chat_id, "To'lov muvaffaqiyatli amalga oshirildi!\nTasdiqlanishini kuting ...")
         else:
-            error_message = "Информация о платеже неполная. Пожалуйста, пришлите соответствующую информацию."
-            bot.send_message(message.chat.id, error_message)
+            bot.send_message(chat_id, "To'lovni amalga oshirishda xatolik yuz berdi.")
     else:
-        bot.send_message(message.chat.id, "Ваш заказ не найден. Пожалуйста, начните процесс оплаты с самого начала.")
+        bot.send_message(chat_id, "Iltimos, to'lov chekini yuklang.")
 
-# Polling loop
-bot.polling(none_stop=True)
+bot.polling()
