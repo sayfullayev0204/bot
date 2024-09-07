@@ -70,7 +70,7 @@ def start(message):
     # Schedule follow-up message 15 minutes later
     scheduler.add_job(
         send_follow_up_message,
-        DateTrigger(run_date=datetime.now(pytz.utc) + timedelta(minutes=0)),
+        DateTrigger(run_date=datetime.now(pytz.utc) + timedelta(minutes=15)),
         args=[message.chat.id, first_name] 
     )
 
