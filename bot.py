@@ -24,11 +24,9 @@ def start(message):
     last_name = message.from_user.last_name if message.from_user.last_name else ""
     username = message.from_user.username if message.from_user.username else ""
 
-    # Check if the user exists in the database
     response = requests.get(f"{API_URL}/users/{telegram_id}/")
     
     if response.status_code == 404:
-        # User not found, register them
         data = {
             'telegram_id': telegram_id,
             'first_name': first_name,
@@ -37,7 +35,18 @@ def start(message):
         }
         requests.post(f"{API_URL}/users/", data=data)
 
-    # Send greeting message and payment button
+    payment_response = requests.get(f"{API_URL}/payments/{telegram_id}/")
+    
+    if payment_response.status_code == 200:
+        payment_data = payment_response.json()
+        if payment_data['is_confirmed']:
+            bot.send_message(message.chat.id, "Siz to'lov qildingiz. Rahmat!")
+        else:
+            send_payment_prompt(message, first_name)
+    else:
+        send_payment_prompt(message, first_name)
+
+def send_payment_prompt(message, first_name):
     markup = InlineKeyboardMarkup()
     pay_button = InlineKeyboardButton(text="To'lov qilish", callback_data='payer')
     markup.add(pay_button)
@@ -184,7 +193,7 @@ def save_receipt(message):
         data = {'telegram_id': telegram_id}
         
         # Make the POST request to your Django API
-        response = requests.post(f"{API_URL}/payments/{telegram_id}/", files=files, data=data)
+        response = requests.post(f"{API_URL}/payment/{telegram_id}/", files=files, data=data)
         
         # Respond based on the success or failure of the API request
         if response.status_code == 201:
