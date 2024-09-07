@@ -7,9 +7,9 @@ from datetime import datetime, timedelta
 import pytz
 from apscheduler.triggers.date import DateTrigger
 
-bot = telebot.TeleBot("6854395221:AAHCbDQEV6ZgCw6F-Z_K6hrBHgOYF1pn0FQ")
+bot = telebot.TeleBot("7189070743:AAErdTkgerf20ygRdhE28HE4MPoRZf59WvA")
 
-API_URL = 'http://127.0.0.1:8000/api'  # Django API endpoint
+API_URL = 'https://seb-production.up.railway.app/api'  # Django API endpoint
 
 scheduler = BackgroundScheduler()
 scheduler.start()
