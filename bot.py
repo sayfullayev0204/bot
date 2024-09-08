@@ -42,7 +42,7 @@ def start(message):
         if payment_data['is_confirmed']:
             bot.send_message(message.chat.id, "Siz to'lov qildingiz. Rahmat!")
         else:
-            send_payment_prompt(message, first_name)
+            bot.send_message(message.chat.id, "Siz to'lov qilgansiz.\nTasdiqlanishini kuting!")
     else:
         send_payment_prompt(message, first_name)
 
