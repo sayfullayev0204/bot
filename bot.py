@@ -110,7 +110,7 @@ def payer(call):
     markup.add(pay_button)
     markup.add(adminga_button)
 
-    bot.send_message(call.message.chat.id, f"{first_name} Risk qilishdan qo'rqmasligizdan xursandman.\n\nWorkshop darslarini boshlashiz uchun quyidagi karta raqamga 47 ming so'm o'tkazing.\n\nKarta raqam: 8600 5729 4713 8587\n\nTo'lovni amalga oshirganingizdan keyin, to'lov chekini pastdagi 'Chekni yuborish' tugmani bosib shu yerga yuboring yoki 'Adminga yuborish' tugmasini bosib adminga yuboring!\n\nSizga Yopiq Workshoga qo'shilish uchun Kanal linkini yuboraman!", reply_markup=markup)
+    bot.send_message(call.message.chat.id, f"{first_name} Risk qilishdan qo'rqmasligizdan xursandman.\n\nWorkshop darslarini boshlashiz uchun quyidagi karta raqamga 47 ming so'm o'tkazing.\n\nKarta raqam: 8600 5729 4713 8587\n\nTo'lovni amalga oshirganingizdan keyin, to'lov chekini pastdagi 'Chekni yuborish' tugmasini bosib shu yerga yuboring yoki 'Adminga yuborish' tugmasini bosib adminga yuboring!\n\nSizga Yopiq Workshoga qo'shilish uchun Kanal linkini yuboraman!", reply_markup=markup)
     
     # Track payment request
     user_payment_requests[call.from_user.id] = {
@@ -122,7 +122,7 @@ def payer(call):
 @bot.callback_query_handler(func=lambda call: call.data == 'pay_chek')
 def ask_for_receipt(call):
     first_name = call.from_user.first_name
-    bot.send_message(call.message.chat.id, f"To'lov chekini skreenshot qilib, shu yerga yuboring!👇\n\n{first_name}, 10 daqiqa ichida chekingizni tekshirib, Sizga Workshop uchun dostup beraman!\n\nIltimos, faqat haqiqiy chekni rasmni yuboring!")
+    bot.send_message(call.message.chat.id, f"To'lov chekini skreenshot qilib, shu yerga yuboring!👇\n\n{first_name}, 10 daqiqa ichida chekingizni tekshirib, Sizga Workshop uchun dostup beraman!\n\nIltimos, faqat haqiqiy chekni rasmini yuboring!")
 
     # Set up a reminder
     scheduler.add_job(
@@ -164,7 +164,7 @@ def remind_user(user_id):
 @bot.callback_query_handler(func=lambda call: call.data == 'pay')
 def ask_for_receipt(call):
     first_name = call.from_user.first_name
-    bot.send_message(call.message.chat.id, f"To'lov chekini skreenshot qilib, shu yerga yuboring!👇\n\n{first_name}, 10 daqiqa ichida chekingizni tekshirib, Sizga Workshop uchun dostup beraman!\n\nIltimos, faqat haqiqiy chekni rasmni yuboring!")
+    bot.send_message(call.message.chat.id, f"To'lov chekini skreenshot qilib, shu yerga yuboring!👇\n\n{first_name}, 10 daqiqa ichida chekingizni tekshirib, Sizga Workshop uchun dostup beraman!\n\nIltimos, faqat haqiqiy chekni rasmini yuboring!")
 
     # Set up a reminder
     scheduler.add_job(
@@ -197,7 +197,7 @@ def save_receipt(message):
         
         # Respond based on the success or failure of the API request
         if response.status_code == 201:
-            bot.send_message(message.chat.id, f"{first_name}, To'lovingizni tekshiruvda.🔍\n\nTez orada Chekni tekshirib, Sizga Workshop uchun Dostup ochib beraman!😊\n\n📌Botni yo'qotib qo'ymaslik uchun 'PIN' qilib qo'ying!")
+            bot.send_message(message.chat.id, f"{first_name}, To'lovingizni tekshiruvga yubordim.🔍\n\nTez orada Chekni tekshirib, Sizga Workshop uchun Dostup ochib beraman!😊\n\n📌Botni yo'qotib qo'ymaslik uchun 'PIN' qilib qo'ying!")
         else:
             bot.send_message(message.chat.id, "To'lovda xatolik.")
     else:
