@@ -40,7 +40,7 @@ def start(message):
     if payment_response.status_code == 200:
         payment_data = payment_response.json()
         if payment_data['is_confirmed']:
-            bot.send_message(message.chat.id, "Siz to'lov qildingiz. Rahmat!")
+            await message.answer(f"{first_name} Siz oldin to'lov qilib ro'yxatdan o'tgansiz!\n\nAgar savollariz yoki Yopiq kanalga qo'shilishda sizda muammo bo'lsa admin bilan bog'laning.😊\n\nButton: 'Adminga yozish'")
         else:
             bot.send_message(message.chat.id, "Siz to'lov qilgansiz.\nTasdiqlanishini kuting!")
     else:
