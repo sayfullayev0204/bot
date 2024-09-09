@@ -73,7 +73,7 @@ def send_payment_prompt(message, first_name):
                 "Agar, Uzumda xatolarsiz, tezroq daromadga chiqib, muvaffaqiyatli savdoyizi yo'lga qo'yishni istasez " \
                 "hoziroq pastdagi tugmani bosib, to'lovni amalga oshiring va Workshopga qo'shiling!"
 
-    with open('bot/home.jpg', 'rb') as image:
+    with open('home.jpg', 'rb') as image:
         bot.send_photo(message.chat.id, photo=image, caption=caption_1)
 
     bot.send_message(message.chat.id, caption_2)
