@@ -7,9 +7,9 @@ from datetime import datetime, timedelta
 import pytz
 from apscheduler.triggers.date import DateTrigger
 
-bot = telebot.TeleBot("7189070743:AAErdTkgerf20ygRdhE28HE4MPoRZf59WvA")
+bot = telebot.TeleBot("7378803947:AAHqiED0UWIGg9icBpIYKAmkyiokfd6nlmg")
 
-API_URL = 'http://127.0.0.1:8000/api'  # Django API endpoint
+API_URL = 'http://komilxon-wk.uz/api'  # Django API endpoint
 
 scheduler = BackgroundScheduler()
 scheduler.start()
