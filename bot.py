@@ -9,7 +9,7 @@ from apscheduler.triggers.date import DateTrigger
 
 bot = telebot.TeleBot("7189070743:AAErdTkgerf20ygRdhE28HE4MPoRZf59WvA")
 
-API_URL = 'https://seb-production.up.railway.app/api'  # Django API endpoint
+API_URL = 'http://127.0.0.1:8000/api'  # Django API endpoint
 
 scheduler = BackgroundScheduler()
 scheduler.start()
@@ -40,7 +40,10 @@ def start(message):
     if payment_response.status_code == 200:
         payment_data = payment_response.json()
         if payment_data['is_confirmed']:
-            await message.answer(f"{first_name} Siz oldin to'lov qilib ro'yxatdan o'tgansiz!\n\nAgar savollariz yoki Yopiq kanalga qo'shilishda sizda muammo bo'lsa admin bilan bog'laning.😊\n\nButton: 'Adminga yozish'")
+            markup =InlineKeyboardMarkup()
+            button = InlineKeyboardButton(text="Adminga yozish", url="https://t.me/uzumda_savdo_uz")
+            markup.add(button)
+            bot.send_message(message.chat.id, f"{first_name} Siz oldin to'lov qilib ro'yxatdan o'tgansiz!\n\nAgar savollariz yoki Yopiq kanalga qo'shilishda sizda muammo bo'lsa admin bilan bog'laning.😊\n\nButton: 'Adminga yozish'", reply_markup=markup)
         else:
             bot.send_message(message.chat.id, "Siz to'lov qilgansiz.\nTasdiqlanishini kuting!")
     else:
@@ -70,7 +73,7 @@ def send_payment_prompt(message, first_name):
                 "Agar, Uzumda xatolarsiz, tezroq daromadga chiqib, muvaffaqiyatli savdoyizi yo'lga qo'yishni istasez " \
                 "hoziroq pastdagi tugmani bosib, to'lovni amalga oshiring va Workshopga qo'shiling!"
 
-    with open('home.jpg', 'rb') as image:
+    with open('bot/home.jpg', 'rb') as image:
         bot.send_photo(message.chat.id, photo=image, caption=caption_1)
 
     bot.send_message(message.chat.id, caption_2)
