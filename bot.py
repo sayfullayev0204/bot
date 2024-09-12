@@ -100,7 +100,7 @@ def payer(call):
     first_name = call.from_user.first_name
     markup = InlineKeyboardMarkup()
     pay_button = InlineKeyboardButton(text="Chekni yuborish", callback_data='pay_chek')
-    adminga_button = InlineKeyboardButton(text="Admin orqali", url="https://t.me/uzumsavdoga")
+    adminga_button = InlineKeyboardButton(text="Admin orqali", url="https://t.me/uzumsavdogar")
     markup.add(pay_button)
     markup.add(adminga_button)
 
