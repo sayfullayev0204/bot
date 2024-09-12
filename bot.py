@@ -64,7 +64,7 @@ def send_payment_prompt(message, first_name):
                 "va bir qancha yana muhim mavzularni o'rganasiz!\n\n" \
                 "Workshop yopiq guruhda bo'lib o'tadi va Guruhga qo'shilish narxi 47 ming so'm!\n\n" \
                 "❗️Muhim. Workshop faqat saralangan ishtirokchilar uchun!\n\n" \
-                "Workshopga qo'shilish uchun pastdagi "To'lov qilish" tugmasini bosing!"
+                "Workshopga qo'shilish uchun pastdagi 'To'lov qilish' tugmasini bosing!"
     
     with open('home.jpg', 'rb') as image:
         bot.send_photo(message.chat.id, photo=image, caption=caption_1,reply_markup=markup)
