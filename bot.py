@@ -1,4 +1,3 @@
-
 import telebot
 import requests
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -54,30 +53,22 @@ def send_payment_prompt(message, first_name):
     pay_button = InlineKeyboardButton(text="To'lov qilish", callback_data='payer')
     markup.add(pay_button)
 
-    caption_1 = f"{first_name} yaxshimisiz?\n\n😊Bu joyda sizni ko'rib turganimdan xursandman!\n\n" \
-                "Rosti, hamma ham bu joygacha kela olmayapti. Chunki biznes tavakkal qilishga undaydi! Maqsadga, " \
-                "millionlarga ega faqatgina tavakkal qilibgina erishilinadi.🏆\n\n" \
-                "O'zim ham Uzumda savdo qilishdan oldin juda ko'p o'ylandim, pulimga kuyib qolmaymanmi, " \
-                "eplay olamanmi? Savdo bo'masachi?\n\n"
+    caption_1 = f"Assalomu alaykum,{first_name} Men Komolxon Ashurov Uzumda savdo qilish bo'yicha mutaxassisman!\n\n" \
+                "23-Sentabrdan boshlab 6 kunlik Yopiq Workshopim bo'lib o'tadi\n\n!" \
+                "Workshopda siz:\n" \
+                "✅Uzumda to'g'ri savdoni boshlashni\n" \
+                "✅Tovar topishni, tovar analiz qilishni\n" \
+                "✅Infografikalar bilan ishlashni\n" \
+                "✅Savdolarni oshirish strategiyalarini\n" \
+                "✅Savdolar tushib ketish sabablarini\n" \
+                "va bir qancha yana muhim mavzularni o'rganasiz!\n\n" \
+                "Workshop yopiq guruhda bo'lib o'tadi va Guruhga qo'shilish narxi 47 ming so'm!\n\n" \
+                "❗️Muhim. Workshop faqat saralangan ishtirokchilar uchun!\n\n" \
+                "Workshopga qo'shilish uchun pastdagi "To'lov qilish" tugmasini bosing!"
     
-    caption_2 = "Hammasini bir chetga surdimda, shunchaki boshladim!\nQiyinchiliklar, o'zim bilmaydigan yo'nalishlar, " \
-                "analizlarsiz va yana bir qancha xatolarim evaziga kutganimdek savdoyim bolmadi.🤦\n\n" \
-                "Lekin, ko'proq o'rganib, marketpleysda savdo qilish ilmlarini o'rganib, yana tavakkal qilib savdoni davom ettirdim.\n\n" \
-                "💸Hozirda esa 1 mlrdan ko'proq aylanmani boshqaraman. 1000 ga yaqin shogirtlarni o'qitdim. " \
-                "Ular orasida 50, 100, 200 mln aylanma qilayotganlari juda ham ko'p.\n\n"
-    
-    caption_3 = "Shu paytgacha bo'lgan tajribam, xatolarim, o'rganganlarim asosida 3 kunlik Workshop tayyorladim.\n\n" \
-                "Workshopdan keyin Siz uzumda savdo qila olamanmi? Savdoyim o'xshaydimi? Pulimga kuyib qolmaydimi? " \
-                "degan savollarizga 100% javob olasiz va Uzumda xatolarsiz muvaffaqiyatli savdoyizi yo'lga qo'yasiz!\n\n" \
-                "❗️Workshop pullik bo'ladi! Bu Siz hozir 47 ming so'm to'lab risk qila olishizi sinovdan o'tkazish uchun!\n\n" \
-                "Agar, Uzumda xatolarsiz, tezroq daromadga chiqib, muvaffaqiyatli savdoyizi yo'lga qo'yishni istasez " \
-                "hoziroq pastdagi tugmani bosib, to'lovni amalga oshiring va Workshopga qo'shiling!"
-
     with open('home.jpg', 'rb') as image:
-        bot.send_photo(message.chat.id, photo=image, caption=caption_1)
+        bot.send_photo(message.chat.id, photo=image, caption=caption_1,reply_markup=markup)
 
-    bot.send_message(message.chat.id, caption_2)
-    bot.send_message(message.chat.id, caption_3, reply_markup=markup)
 
     # Schedule follow-up message 15 minutes later
     scheduler.add_job(
