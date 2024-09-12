@@ -40,7 +40,7 @@ def start(message):
         payment_data = payment_response.json()
         if payment_data['is_confirmed']:
             markup =InlineKeyboardMarkup()
-            button = InlineKeyboardButton(text="Adminga yozish", url="https://t.me/uzumda_savdo_uz")
+            button = InlineKeyboardButton(text="Adminga yozish", url="https://t.me/uzumsavdoga")
             markup.add(button)
             bot.send_message(message.chat.id, f"{first_name} Siz oldin to'lov qilib ro'yxatdan o'tgansiz!\n\nAgar savollariz yoki Yopiq kanalga qo'shilishda sizda muammo bo'lsa admin bilan bog'laning.😊\n\nButton: 'Adminga yozish'", reply_markup=markup)
         else:
@@ -100,7 +100,7 @@ def payer(call):
     first_name = call.from_user.first_name
     markup = InlineKeyboardMarkup()
     pay_button = InlineKeyboardButton(text="Chekni yuborish", callback_data='pay_chek')
-    adminga_button = InlineKeyboardButton(text="Admin orqali", url="https://t.me/uzumda_savdo_uz")
+    adminga_button = InlineKeyboardButton(text="Admin orqali", url="https://t.me/uzumsavdoga")
     markup.add(pay_button)
     markup.add(adminga_button)
 
