@@ -53,7 +53,7 @@ def send_payment_prompt(message, first_name):
     pay_button = InlineKeyboardButton(text="To'lov qilish", callback_data='payer')
     markup.add(pay_button)
 
-    caption_1 = f"Assalomu alaykum,{first_name} Men Komolxon Ashurov Uzumda savdo qilish bo'yicha mutaxassisman!\n\n" \
+    caption_1 = f"Assalomu alaykum,{first_name} Men Komilxon Ashurov Uzumda savdo qilish bo'yicha mutaxassisman!\n\n" \
                 "23-Sentabrdan boshlab 6 kunlik Yopiq Workshopim bo'lib o'tadi\n\n!" \
                 "Workshopda siz:\n" \
                 "✅Uzumda to'g'ri savdoni boshlashni\n" \
