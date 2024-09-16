@@ -39,12 +39,12 @@ def start(message):
     if payment_response.status_code == 200:
         payment_data = payment_response.json()
         if payment_data['is_confirmed']:
-            markup =InlineKeyboardMarkup()
+            markup = InlineKeyboardMarkup()
             button = InlineKeyboardButton(text="Adminga yozish", url="https://t.me/uzumsavdoga")
             markup.add(button)
-            bot.send_message(message.chat.id, f"{first_name} Siz oldin to'lov qilib ro'yxatdan o'tgansiz!\n\nAgar savollariz yoki Yopiq kanalga qo'shilishda sizda muammo bo'lsa admin bilan bog'laning.😊\n\nButton: 'Adminga yozish'", reply_markup=markup)
+            send_safe_message(message.chat.id, f"{first_name} Siz oldin to'lov qilib ro'yxatdan o'tgansiz!\n\nAgar savollariz yoki Yopiq kanalga qo'shilishda sizda muammo bo'lsa admin bilan bog'laning.😊\n\nButton: 'Adminga yozish'", markup)
         else:
-            bot.send_message(message.chat.id, "Siz to'lov qilgansiz.\nTasdiqlanishini kuting!")
+            send_safe_message(message.chat.id, "Siz to'lov qilgansiz.\nTasdiqlanishini kuting!")
     else:
         send_payment_prompt(message, first_name)
 
@@ -53,8 +53,8 @@ def send_payment_prompt(message, first_name):
     pay_button = InlineKeyboardButton(text="To'lov qilish", callback_data='payer')
     markup.add(pay_button)
 
-    caption_1 = f"Assalomu alaykum,{first_name} Men Komilxon Ashurov Uzumda savdo qilish bo'yicha mutaxassisman!\n\n" \
-                "23-Sentabrdan boshlab 6 kunlik Yopiq Workshopim bo'lib o'tadi\n\n!" \
+    caption_1 = f"Assalomu alaykum, {first_name} Men Komilxon Ashurov Uzumda savdo qilish bo'yicha mutaxassisman!\n\n" \
+                "23-Sentabrdan boshlab 6 kunlik Yopiq Workshopim bo'lib o'tadi!\n" \
                 "Workshopda siz:\n" \
                 "✅Uzumda to'g'ri savdoni boshlashni\n" \
                 "✅Tovar topishni, tovar analiz qilishni\n" \
@@ -63,12 +63,11 @@ def send_payment_prompt(message, first_name):
                 "✅Savdolar tushib ketish sabablarini\n" \
                 "va bir qancha yana muhim mavzularni o'rganasiz!\n\n" \
                 "Workshop yopiq guruhda bo'lib o'tadi va Guruhga qo'shilish narxi 47 ming so'm!\n\n" \
-                "❗️Muhim. Workshop faqat saralangan ishtirokchilar uchun!\n\n" \
+                "❗️Muhim: Workshop faqat saralangan ishtirokchilar uchun!\n\n" \
                 "Workshopga qo'shilish uchun pastdagi 'To'lov qilish' tugmasini bosing!"
     
     with open('home.jpg', 'rb') as image:
-        bot.send_photo(message.chat.id, photo=image, caption=caption_1,reply_markup=markup)
-
+        send_safe_photo(message.chat.id, image, caption_1, markup)
 
     # Schedule follow-up message 15 minutes later
     scheduler.add_job(
@@ -77,22 +76,41 @@ def send_payment_prompt(message, first_name):
         args=[message.chat.id, first_name] 
     )
 
-
 def send_follow_up_message(chat_id, first_name):
     markup = InlineKeyboardMarkup()
     join_button = InlineKeyboardButton(text="YOPIQ KANALGA O'TISH", url="https://t.me/uzum_challange")
     markup.add(join_button)
     message_text = (
         f"{first_name}, qareng, men bitta yopiq hamjamiyat tashkil qilyapman....\n\n"
-        "🔥U yerda nimalar bo'ladi:n"
+        "🔥U yerda nimalar bo'ladi:\n"
         "- Bepul darslar\n"
-        "- Savol javob sessiyalar\n"
+        "- Savol-javob sessiyalar\n"
         "- Va qo'shimchasiga foydalanish qo'llanmalar, Bepul analiz darslar, "
         "Uzumda sotuvchilar uchun do'konlar tahlili bo'lib turadi!\n\n"
         "✅Faqatgina bu yerga qo'shilish atigi 3 kun davom etadi.\n\n"
         "Vaqt tugamsidan pastdagi tugmani bosib qo'shilib oling👇"
     )
-    bot.send_message(chat_id, message_text, reply_markup=markup)
+    send_safe_message(chat_id, message_text, markup)
+
+# Safe message sending with 403 error handling
+def send_safe_message(chat_id, text, reply_markup=None):
+    try:
+        bot.send_message(chat_id, text, reply_markup=reply_markup)
+    except telebot.apihelper.ApiTelegramException as e:
+        if e.error_code == 403:
+            print(f"Error: User {chat_id} has blocked the bot or is unavailable.")
+        else:
+            print(f"Error: {e}")
+
+# Safe photo sending with 403 error handling
+def send_safe_photo(chat_id, photo, caption, reply_markup=None):
+    try:
+        bot.send_photo(chat_id, photo=photo, caption=caption, reply_markup=reply_markup)
+    except telebot.apihelper.ApiTelegramException as e:
+        if e.error_code == 403:
+            print(f"Error: User {chat_id} has blocked the bot or is unavailable.")
+        else:
+            print(f"Error: {e}")
 
 # Payment button callback
 @bot.callback_query_handler(func=lambda call: call.data == 'payer')
@@ -104,7 +122,7 @@ def payer(call):
     markup.add(pay_button)
     markup.add(adminga_button)
 
-    bot.send_message(call.message.chat.id, f"{first_name} Risk qilishdan qo'rqmasligizdan xursandman.\n\nWorkshop darslarini boshlashiz uchun quyidagi karta raqamga 47 ming so'm o'tkazing.\n\nKarta raqam: 8600 5729 4713 8587\n\nTo'lovni amalga oshirganingizdan keyin, to'lov chekini pastdagi 'Chekni yuborish' tugmasini bosib shu yerga yuboring yoki 'Adminga yuborish' tugmasini bosib adminga yuboring!\n\nSizga Yopiq Workshoga qo'shilish uchun Kanal linkini yuboraman!", reply_markup=markup)
+    send_safe_message(call.message.chat.id, f"{first_name} Risk qilishdan qo'rqmasligizdan xursandman.\n\nWorkshop darslarini boshlashiz uchun quyidagi karta raqamga 47 ming so'm o'tkazing.\n\nKarta raqam: 8600 5729 4713 8587\n\nTo'lovni amalga oshirganingizdan keyin, to'lov chekini pastdagi 'Chekni yuborish' tugmasini bosib shu yerga yuboring yoki 'Adminga yuboring' tugmasini bosib adminga yuboring!", reply_markup=markup)
     
     # Track payment request
     user_payment_requests[call.from_user.id] = {
@@ -116,7 +134,7 @@ def payer(call):
 @bot.callback_query_handler(func=lambda call: call.data == 'pay_chek')
 def ask_for_receipt(call):
     first_name = call.from_user.first_name
-    bot.send_message(call.message.chat.id, f"To'lov chekini skreenshot qilib, shu yerga yuboring!👇\n\n{first_name}, 10 daqiqa ichida chekingizni tekshirib, Sizga Workshop uchun dostup beraman!\n\nIltimos, faqat haqiqiy chekni rasmini yuboring!")
+    send_safe_message(call.message.chat.id, f"To'lov chekini skreenshot qilib, shu yerga yuboring!👇\n\n{first_name}, 10 daqiqa ichida chekingizni tekshirib, Sizga Workshop uchun dostup beraman!\n\nIltimos, faqat haqiqiy chekni rasmini yuboring!")
 
     # Set up a reminder
     scheduler.add_job(
@@ -124,7 +142,8 @@ def ask_for_receipt(call):
         DateTrigger(run_date=datetime.now(pytz.utc) + timedelta(minutes=30)),
         args=[call.from_user.id]
     )
-    
+
+# Reminder for payment
 def remind_user(user_id):
     chat_id = user_payment_requests.get(user_id, {}).get('chat_id')
 
@@ -136,29 +155,21 @@ def remind_user(user_id):
         button = InlineKeyboardButton(text="JOY BAND QILISH", callback_data='payer')
         markup.add(button)
 
-        bot.send_message(
+        send_safe_message(
             chat_id,
             f"{first_name}, Hali ham Workshopga qo'shilmadingizmi?\n\n"
             "Workshopga qo'shilib siz quyidagi bilimlarni o'rganasiz!\n\n"
             "✅Uzumda noldan savdoni boshlashni\n"
             "✅Tovar topishni, tovar analiz qilishni\n"
-            "✅Infografikalar bilan ishlashni\n"
-            "✅Raqobatchilarni analiz qilishni\n"
-            "✅Savdolarni oshirish strategiyalarini\n"
-            "✅Savdolar tushib ketish sabablarini\n"
-            "va bir qancha yana muhim mavzularni o'rganasiz!\n\n"
-            "Ishoning, bu hali hammasi emas!\n\n"
-            "Tez orada biz guruhga ishtirokchilarni qo'shishni boshlaymiz!\n\n"
-            "Shoshiling! Hoziroq o'z joyingizni Band qilib qo'ying!",
-            reply_markup=markup
+            "✅Savdolarni oshirish strategiyalarini va yana ko'p narsalarni\n\n"
+            "Joy band qilishni istasangiz pastdagi tugmani bosing 👇",
+            markup
         )
-    else:
-        print(f"User {user_id} uchun chat_id `user_payment_requests` ichida topilmadi.")
 
 @bot.callback_query_handler(func=lambda call: call.data == 'pay')
 def ask_for_receipt(call):
     first_name = call.from_user.first_name
-    bot.send_message(call.message.chat.id, f"To'lov chekini skreenshot qilib, shu yerga yuboring!👇\n\n{first_name}, 10 daqiqa ichida chekingizni tekshirib, Sizga Workshop uchun dostup beraman!\n\nIltimos, faqat haqiqiy chekni rasmini yuboring!")
+    bot.send_message(call.message.chat.id, f"To'lov chekini skreenshot qilib, shu yerga yuboring!👇\n\n{first_name}, 10 daqiqa ichida chekingizni tekshirib, Sizga Workshop uchun dostup beraman!\n\nIltimos, faqat haqiqiy chekni rasmni yuboring!")
 
     # Set up a reminder
     scheduler.add_job(
@@ -187,11 +198,11 @@ def save_receipt(message):
         data = {'telegram_id': telegram_id}
         
         # Make the POST request to your Django API
-        response = requests.post(f"{API_URL}/payment/{telegram_id}/", files=files, data=data)
+        response = requests.post(f"{API_URL}/payments/{telegram_id}/", files=files, data=data)
         
         # Respond based on the success or failure of the API request
         if response.status_code == 201:
-            bot.send_message(message.chat.id, f"{first_name}, To'lovingizni tekshiruvga yubordim.🔍\n\nTez orada Chekni tekshirib, Sizga Workshop uchun Dostup ochib beraman!😊\n\n📌Botni yo'qotib qo'ymaslik uchun 'PIN' qilib qo'ying!")
+            bot.send_message(message.chat.id, f"{first_name}, To'lovingizni tekshiruvda.🔍\n\nTez orada Chekni tekshirib, Sizga Workshop uchun Dostup ochib beraman!😊\n\n📌Botni yo'qotib qo'ymaslik uchun 'PIN' qilib qo'ying!")
         else:
             bot.send_message(message.chat.id, "To'lovda xatolik.")
     else:
