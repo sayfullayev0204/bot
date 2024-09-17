@@ -184,29 +184,35 @@ import requests
 
 @bot.message_handler(content_types=['photo'])
 def save_receipt(message):
+    user_id = message.from_user.id
     first_name = message.from_user.first_name
-    if message.photo:
-        # Get the file info from Telegram
-        file_info = bot.get_file(message.photo[-1].file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-        
-        # Get the telegram_id from the message
-        telegram_id = message.from_user.id
-        
-        # Prepare the files and data to send to the Django API
-        files = {'chek': ('receipt.jpg', downloaded_file, 'image/jpeg')}
-        data = {'telegram_id': telegram_id}
-        
-        # Make the POST request to your Django API
-        response = requests.post(f"{API_URL}/payments/{telegram_id}/", files=files, data=data)
-        
-        # Respond based on the success or failure of the API request
-        if response.status_code == 201:
-            bot.send_message(message.chat.id, f"{first_name}, To'lovingizni tekshiruvda.🔍\n\nTez orada Chekni tekshirib, Sizga Workshop uchun Dostup ochib beraman!😊\n\n📌Botni yo'qotib qo'ymaslik uchun 'PIN' qilib qo'ying!")
+    
+    if user_payment_requests.get(user_id, False):  # Only accept photos if user pressed "To'lov qilish"
+        if message.photo:
+            # Get the file info from Telegram
+            file_info = bot.get_file(message.photo[-1].file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
+            
+            # Prepare the files and data to send to the Django API
+            files = {'chek': ('receipt.jpg', downloaded_file, 'image/jpeg')}
+            data = {'telegram_id': user_id}
+            
+            # Make the POST request to your Django API
+            response = requests.post(f"{API_URL}/payments/{user_id}/", files=files, data=data)
+            
+            # Respond based on the success or failure of the API request
+            if response.status_code == 201:
+                bot.send_message(message.chat.id, f"{first_name}, To'lovingizni tekshiruvda.🔍\n\nTez orada Chekni tekshirib, Sizga Workshop uchun Dostup ochib beraman!😊\n\n📌Botni yo'qotib qo'ymaslik uchun 'PIN' qilib qo'ying!")
+                user_payment_requests[user_id] = False  # Reset the payment state after successful receipt
+            else:
+                bot.send_message(message.chat.id, "To'lovda xatolik.")
         else:
-            bot.send_message(message.chat.id, "To'lovda xatolik.")
+            bot.send_message(message.chat.id, "Iltimos, faqat rasm yuboring.")
     else:
-        bot.send_message(message.chat.id, "Iltimos, faqat rasm yuboring.")
+        markup = InlineKeyboardMarkup() 
+        button = InlineKeyboardButton(text="Adminga yozish", url="https://t.me/uzumsavdogar")
+        markup.add(button)
+        bot.send_message(message.chat.id, "Iltimos, faqat 'To'lov qilish' tugmasini bosganingizdan keyin rasm yuboring.\n\nMuammo bor bo'lsa adminga yozing", reply_markup=markup)
 
 # Handle arbitrary messages and save to Django
 @bot.message_handler(func=lambda message: True)
