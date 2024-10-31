@@ -8,45 +8,86 @@ from apscheduler.triggers.date import DateTrigger
 
 bot = telebot.TeleBot("7378803947:AAHqiED0UWIGg9icBpIYKAmkyiokfd6nlmg")
 
-API_URL = 'http://komilxon-wk.uz/api'  # Django API endpoint
+API_URL = 'http://45.138.158.200/api'  # Django API endpoint
 
 scheduler = BackgroundScheduler()
 scheduler.start()
 
 user_payment_requests = {}
-
+user_registration_state = {}
 # /start command to register user
 @bot.message_handler(commands=['start'])
 def start(message):
     telegram_id = message.from_user.id
-    first_name = message.from_user.first_name
-    last_name = message.from_user.last_name if message.from_user.last_name else ""
-    username = message.from_user.username if message.from_user.username else ""
 
+    # Check if the user is already registered
     response = requests.get(f"{API_URL}/users/{telegram_id}/")
     
-    if response.status_code == 404:
+    if response.status_code == 404:  # User is not registered
+        bot.send_message(message.chat.id, "Assalomu alaykum!\n\nKeling, hammasini boshlashdan oldin tanishib olaylik😊\n\nIsmingiz?")
+        user_registration_state[telegram_id] = {"step": "first_name"}
+    else:  # User exists
+        user_data = response.json()
+        first_name = user_data.get('first_name', '')  # Retrieve the first name
+        
+        # Check payment status
+        payment_response = requests.get(f"{API_URL}/payments/{telegram_id}/")
+        
+        if payment_response.status_code == 200:
+            payment_data = payment_response.json()
+            if payment_data['is_confirmed']:
+                markup = InlineKeyboardMarkup()
+                button = InlineKeyboardButton(text="Adminga yozish", url="https://t.me/uzumsavdoga")
+                markup.add(button)
+                bot.send_message(
+                    message.chat.id,
+                    "Siz to'lov qilib ro'yxatdan o'tgansiz. Agar yordam kerak bo'lsa, adminga yozing.",
+                    reply_markup=markup
+                )
+            else:
+                markup = InlineKeyboardMarkup()
+                button = InlineKeyboardButton(text="Adminga yozish", url="https://t.me/uzumsavdoga")
+                markup.add(button)
+                bot.send_message(
+                    message.chat.id,
+                    "To'lov qilgansiz. Tasdiqlanishini kuting!",
+                    reply_markup=markup
+                )
+        else:
+            # User is registered but hasn't paid
+            send_payment_prompt(message, first_name)
+
+def send_payment_prompt(message, first_name=""):
+    bot.send_message(message.chat.id, f"{first_name}, iltimos, to'lovni amalga oshiring.")
+
+@bot.message_handler(func=lambda message: message.from_user.id in user_registration_state)
+def registration_handler(message):
+    telegram_id = message.from_user.id
+    state = user_registration_state[telegram_id]
+
+    if state["step"] == "first_name":
+        user_registration_state[telegram_id]["first_name"] = message.text
+        bot.send_message(message.chat.id, "Telefon raqamingizni kiriting:")
+        state["step"] = "phone"
+
+    elif state["step"] == "phone":
+        user_registration_state[telegram_id]["phone"] = message.text
+        # Save the user data to the API
         data = {
             'telegram_id': telegram_id,
-            'first_name': first_name,
-            'last_name': last_name,
-            'username': username
+            'first_name': user_registration_state[telegram_id]["first_name"],
+            'phone': user_registration_state[telegram_id]["phone"],
+            'username': message.from_user.username or ""
         }
-        requests.post(f"{API_URL}/users/", data=data)
+        response = requests.post(f"{API_URL}/users/", data=data)
 
-    payment_response = requests.get(f"{API_URL}/payments/{telegram_id}/")
-    
-    if payment_response.status_code == 200:
-        payment_data = payment_response.json()
-        if payment_data['is_confirmed']:
-            markup = InlineKeyboardMarkup()
-            button = InlineKeyboardButton(text="Adminga yozish", url="https://t.me/uzumsavdoga")
-            markup.add(button)
-            send_safe_message(message.chat.id, f"{first_name} Siz oldin to'lov qilib ro'yxatdan o'tgansiz!\n\nAgar savollariz yoki Yopiq kanalga qo'shilishda sizda muammo bo'lsa admin bilan bog'laning.😊\n\nButton: 'Adminga yozish'", markup)
+        if response.status_code == 201:
+            send_payment_prompt(message, data['first_name'])
         else:
-            send_safe_message(message.chat.id, "Siz to'lov qilgansiz.\nTasdiqlanishini kuting!")
-    else:
-        send_payment_prompt(message, first_name)
+            bot.send_message(message.chat.id, "Ro'yxatdan o'tishda xatolik yuz berdi. Qaytadan urinib ko'ring.")
+        
+        # Clear the registration state
+        del user_registration_state[telegram_id]
 
 def send_payment_prompt(message, first_name):
     markup = InlineKeyboardMarkup()
