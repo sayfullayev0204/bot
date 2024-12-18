@@ -1,304 +1,323 @@
-import telebot
-import requests
-from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
-from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime, timedelta
-import pytz
-from apscheduler.triggers.date import DateTrigger
-
-bot = telebot.TeleBot("7378803947:AAHqiED0UWIGg9icBpIYKAmkyiokfd6nlmg")
-
-API_URL = 'http://komilxon-wk.uz//api'  # Django API endpoint
-
-scheduler = BackgroundScheduler()
-scheduler.start()
-
-user_payment_requests = {}
-user_registration_state = {}
-# /start command to register user
-@bot.message_handler(commands=['start'])
-def start(message):
-    telegram_id = message.from_user.id
-
-    # Check if the user is already registered
-    response = requests.get(f"{API_URL}/users/{telegram_id}/")
-    
-    if response.status_code == 404:  # User is not registered
-        bot.send_message(message.chat.id, "Assalomu alaykum!\n\nKeling, hammasini boshlashdan oldin tanishib olaylik😊\n\nIsmingiz?")
-        user_registration_state[telegram_id] = {"step": "first_name"}
-    else:  # User exists
-        user_data = response.json()
-        first_name = user_data.get('first_name', '')  # Retrieve the first name
-        
-        # Check payment status
-        payment_response = requests.get(f"{API_URL}/payments/{telegram_id}/")
-        
-        if payment_response.status_code == 200:
-            payment_data = payment_response.json()
-            if payment_data['is_confirmed']:
-                markup = InlineKeyboardMarkup()
-                button = InlineKeyboardButton(text="Adminga yozish", url="https://t.me/uzumsavdoga")
-                markup.add(button)
-                bot.send_message(
-                    message.chat.id,
-                    "Siz to'lov qilib ro'yxatdan o'tgansiz. Agar yordam kerak bo'lsa, adminga yozing.",
-                    reply_markup=markup
-                )
-            else:
-                markup = InlineKeyboardMarkup()
-                button = InlineKeyboardButton(text="Adminga yozish", url="https://t.me/uzumsavdoga")
-                markup.add(button)
-                bot.send_message(
-                    message.chat.id,
-                    "To'lov qilgansiz. Tasdiqlanishini kuting!",
-                    reply_markup=markup
-                )
-        else:
-            # User is registered but hasn't paid
-            send_payment_prompt(message, first_name)
-
-def send_payment_prompt(message, first_name=""):
-    bot.send_message(message.chat.id, f"{first_name}, iltimos, to'lovni amalga oshiring.")
-
-@bot.message_handler(func=lambda message: message.from_user.id in user_registration_state)
-def registration_handler(message):
-    telegram_id = message.from_user.id
-    state = user_registration_state[telegram_id]
-
-    if state["step"] == "first_name":
-        user_registration_state[telegram_id]["first_name"] = message.text
-        bot.send_message(message.chat.id, "Telefon raqamingizni kiriting:")
-        state["step"] = "phone"
-
-    elif state["step"] == "phone":
-        user_registration_state[telegram_id]["phone"] = message.text
-        # Save the user data to the API
-        data = {
-            'telegram_id': telegram_id,
-            'first_name': user_registration_state[telegram_id]["first_name"],
-            'phone': user_registration_state[telegram_id]["phone"],
-            'username': message.from_user.username or ""
-        }
-        response = requests.post(f"{API_URL}/users/", data=data)
-
-        if response.status_code == 201:
-            send_payment_prompt(message, data['first_name'])
-        else:
-            bot.send_message(message.chat.id, "Ro'yxatdan o'tishda xatolik yuz berdi. Qaytadan urinib ko'ring.")
-        
-        # Clear the registration state
-        del user_registration_state[telegram_id]
-
-def send_payment_prompt(message, first_name):
-    markup = InlineKeyboardMarkup()
-    pay_button = InlineKeyboardButton(text="To'lov qilish", callback_data='payer')
-    markup.add(pay_button)
-
-    caption_1 = f"Assalomu alaykum, {first_name} Men Komilxon Ashurov Uzumda savdo qilish bo'yicha mutaxassisman!\n\n" \
-                "23-Sentabrdan boshlab 6 kunlik Yopiq Workshopim bo'lib o'tadi!\n" \
-                "Workshopda siz:\n" \
-                "✅Uzumda to'g'ri savdoni boshlashni\n" \
-                "✅Tovar topishni, tovar analiz qilishni\n" \
-                "✅Infografikalar bilan ishlashni\n" \
-                "✅Savdolarni oshirish strategiyalarini\n" \
-                "✅Savdolar tushib ketish sabablarini\n" \
-                "va bir qancha yana muhim mavzularni o'rganasiz!\n\n" \
-                "Workshop yopiq guruhda bo'lib o'tadi va Guruhga qo'shilish narxi 47 ming so'm!\n\n" \
-                "❗️Muhim: Workshop faqat saralangan ishtirokchilar uchun!\n\n" \
-                "Workshopga qo'shilish uchun pastdagi 'To'lov qilish' tugmasini bosing!"
-    
-    with open('home.jpg', 'rb') as image:
-        send_safe_photo(message.chat.id, image, caption_1, markup)
-
-    # Schedule follow-up message 15 minutes later
-    scheduler.add_job(
-        send_follow_up_message,
-        DateTrigger(run_date=datetime.now(pytz.utc) + timedelta(minutes=15)),
-        args=[message.chat.id, first_name] 
-    )
-
-def send_follow_up_message(chat_id, first_name):
-    markup = InlineKeyboardMarkup()
-    join_button = InlineKeyboardButton(text="YOPIQ KANALGA O'TISH", url="https://t.me/uzum_challange")
-    markup.add(join_button)
-    message_text = (
-        f"{first_name}, qareng, men bitta yopiq hamjamiyat tashkil qilyapman....\n\n"
-        "🔥U yerda nimalar bo'ladi:\n"
-        "- Bepul darslar\n"
-        "- Savol-javob sessiyalar\n"
-        "- Va qo'shimchasiga foydalanish qo'llanmalar, Bepul analiz darslar, "
-        "Uzumda sotuvchilar uchun do'konlar tahlili bo'lib turadi!\n\n"
-        "✅Faqatgina bu yerga qo'shilish atigi 3 kun davom etadi.\n\n"
-        "Vaqt tugamsidan pastdagi tugmani bosib qo'shilib oling👇"
-    )
-    send_safe_message(chat_id, message_text, markup)
-
-# Safe message sending with 403 error handling
-def send_safe_message(chat_id, text, reply_markup=None):
-    try:
-        bot.send_message(chat_id, text, reply_markup=reply_markup)
-    except telebot.apihelper.ApiTelegramException as e:
-        if e.error_code == 403:
-            print(f"Error: User {chat_id} has blocked the bot or is unavailable.")
-        else:
-            print(f"Error: {e}")
-
-# Safe photo sending with 403 error handling
-def send_safe_photo(chat_id, photo, caption, reply_markup=None):
-    try:
-        bot.send_photo(chat_id, photo=photo, caption=caption, reply_markup=reply_markup)
-    except telebot.apihelper.ApiTelegramException as e:
-        if e.error_code == 403:
-            print(f"Error: User {chat_id} has blocked the bot or is unavailable.")
-        else:
-            print(f"Error: {e}")
-
-# Payment button callback
-@bot.callback_query_handler(func=lambda call: call.data == 'payer')
-def payer(call):
-    first_name = call.from_user.first_name
-    markup = InlineKeyboardMarkup()
-    pay_button = InlineKeyboardButton(text="Chekni yuborish", callback_data='pay_chek')
-    adminga_button = InlineKeyboardButton(text="Admin orqali", url="https://t.me/uzumsavdogar")
-    markup.add(pay_button)
-    markup.add(adminga_button)
-
-    send_safe_message(call.message.chat.id, f"{first_name} Risk qilishdan qo'rqmasligizdan xursandman.\n\nWorkshop darslarini boshlashiz uchun quyidagi karta raqamga 47 ming so'm o'tkazing.\n\nKarta raqam: 8600 5729 4713 8587\n\nTo'lovni amalga oshirganingizdan keyin, to'lov chekini pastdagi 'Chekni yuborish' tugmasini bosib shu yerga yuboring yoki 'Adminga yuboring' tugmasini bosib adminga yuboring!", reply_markup=markup)
-    
-    # Track payment request
-    user_payment_requests[call.from_user.id] = {
-        'chat_id': call.message.chat.id,
-        'timestamp': datetime.now(pytz.utc)
-    }
-
-# Callback for sending the receipt
-@bot.callback_query_handler(func=lambda call: call.data == 'pay_chek')
-def ask_for_receipt(call):
-    first_name = call.from_user.first_name
-    send_safe_message(call.message.chat.id, f"To'lov chekini skreenshot qilib, shu yerga yuboring!👇\n\n{first_name}, 10 daqiqa ichida chekingizni tekshirib, Sizga Workshop uchun dostup beraman!\n\nIltimos, faqat haqiqiy chekni rasmini yuboring!")
-
-    # Set up a reminder
-    scheduler.add_job(
-        remind_user,
-        DateTrigger(run_date=datetime.now(pytz.utc) + timedelta(minutes=30)),
-        args=[call.from_user.id]
-    )
-
-# Reminder for payment
-def remind_user(user_id):
-    chat_id = user_payment_requests.get(user_id, {}).get('chat_id')
-
-    if chat_id:
-        user = bot.get_chat_member(chat_id, user_id)
-        first_name = user.user.first_name
-        
-        markup = InlineKeyboardMarkup()
-        button = InlineKeyboardButton(text="JOY BAND QILISH", callback_data='payer')
-        markup.add(button)
-
-        send_safe_message(
-            chat_id,
-            f"{first_name}, Hali ham Workshopga qo'shilmadingizmi?\n\n"
-            "Workshopga qo'shilib siz quyidagi bilimlarni o'rganasiz!\n\n"
-            "✅Uzumda noldan savdoni boshlashni\n"
-            "✅Tovar topishni, tovar analiz qilishni\n"
-            "✅Savdolarni oshirish strategiyalarini va yana ko'p narsalarni\n\n"
-            "Joy band qilishni istasangiz pastdagi tugmani bosing 👇",
-            markup
-        )
-
-@bot.callback_query_handler(func=lambda call: call.data == 'pay')
-def ask_for_receipt(call):
-    first_name = call.from_user.first_name
-    bot.send_message(call.message.chat.id, f"To'lov chekini skreenshot qilib, shu yerga yuboring!👇\n\n{first_name}, 10 daqiqa ichida chekingizni tekshirib, Sizga Workshop uchun dostup beraman!\n\nIltimos, faqat haqiqiy chekni rasmni yuboring!")
-
-    # Set up a reminder
-    scheduler.add_job(
-        remind_user,
-        DateTrigger(run_date=datetime.now(pytz.utc) + timedelta(minutes=30)),
-        args=[call.from_user.id]
-    )
-    
-
-# Save receipt image
+import aiohttp
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton,InputMediaPhoto,ReplyKeyboardRemove
+from aiogram.utils import executor
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.dispatcher import FSMContext
+from aiogram.contrib.middlewares.logging import LoggingMiddleware
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
 import requests
 
-@bot.message_handler(content_types=['photo'])
-def save_receipt(message):
-    user_id = message.from_user.id
-    first_name = message.from_user.first_name
-    
-    if user_payment_requests.get(user_id, False):  # Only accept photos if user pressed "To'lov qilish"
-        if message.photo:
-            # Get the file info from Telegram
-            file_info = bot.get_file(message.photo[-1].file_id)
-            downloaded_file = bot.download_file(file_info.file_path)
-            
-            # Prepare the files and data to send to the Django API
-            files = {'chek': ('receipt.jpg', downloaded_file, 'image/jpeg')}
-            data = {'telegram_id': user_id}
-            
-            # Make the POST request to your Django API
-            response = requests.post(f"{API_URL}/payments/{user_id}/", files=files, data=data)
-            
-            # Respond based on the success or failure of the API request
-            if response.status_code == 201:
-                bot.send_message(message.chat.id, f"{first_name}, To'lovingizni tekshiruvda.🔍\n\nTez orada Chekni tekshirib, Sizga Workshop uchun Dostup ochib beraman!😊\n\n📌Botni yo'qotib qo'ymaslik uchun 'PIN' qilib qo'ying!")
-                user_payment_requests[user_id] = False  # Reset the payment state after successful receipt
-            else:
-                bot.send_message(message.chat.id, "To'lovda xatolik.")
-        else:
-            bot.send_message(message.chat.id, "Iltimos, faqat rasm yuboring.")
-    else:
-        markup = InlineKeyboardMarkup() 
-        button = InlineKeyboardButton(text="Adminga yozish", url="https://t.me/uzumsavdogar")
-        markup.add(button)
-        bot.send_message(message.chat.id, "Iltimos, faqat 'To'lov qilish' tugmasini bosganingizdan keyin rasm yuboring.\n\nMuammo bor bo'lsa adminga yozing", reply_markup=markup)
+BOT_TOKEN = "7631105546:AAGszQFEoWOGX2mOOjd4LIsXL433MGLiLfc"
+API_BASE_URL = "https://9b14-95-214-210-167.ngrok-free.app/api/" 
 
-# Handle arbitrary messages and save to Django
-@bot.message_handler(func=lambda message: True)
-def save_message(message):
-    telegram_id = message.from_user.id
-    data = {}
-    files = None
+bot = Bot(token=BOT_TOKEN)
+storage = MemoryStorage()
+dp = Dispatcher(bot, storage=storage)
+dp.middleware.setup(LoggingMiddleware())
 
-    # Handling different message types
-    if message.text:
-        data = {'text': message.text}
-    elif message.photo:
-        # Handle photo message
-        file_info = bot.get_file(message.photo[-1].file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-        with open("photo.jpg", 'wb') as new_file:
-            new_file.write(downloaded_file)
-        files = {'image': open("photo.jpg", 'rb')}
-    elif message.video:
-        # Handle video message
-        file_info = bot.get_file(message.video.file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-        with open("video.mp4", 'wb') as new_file:
-            new_file.write(downloaded_file)
-        files = {'video': open("video.mp4", 'rb')}
-    
-    # Send the message data to Django API
+# Holatlar
+class PostCreation(StatesGroup):
+    category = State()
+    model = State()
+    year = State()
+    price = State()
+    image = State()
+    location = State()
+    post = State()
+
+
+async def fetch_api(url, method="GET", data=None):
     try:
-        response = requests.post(f"{API_URL}/messages/{telegram_id}/", data=data, files=files)
-        
-        # Check for successful response
-        if response.status_code == 201:
-            bot.send_message(message.chat.id, "Xabaringiz yuborildi, admin javobini kuting.")
-        else:
-            bot.send_message(message.chat.id, "Xabarni yuborishda xatolik yuz berdi, iltimos qaytadan urinib ko'ring.")
-    
+        async with aiohttp.ClientSession() as session:
+            if method == "GET":
+                async with session.get(url) as response:
+                    return await response.json() if response.status == 200 else None
+            elif method == "POST":
+                async with session.post(url, data=data) as response:
+                    return await response.json() if response.status in [200, 201] else None
     except Exception as e:
-        # Handle any exceptions during the request
-        bot.send_message(message.chat.id, "Xabarni yuborishda muammo yuz berdi.")
-        print(e)
-    
-    finally:
-        # Close files if opened
-        if files:
-            for file in files.values():
-                file.close()
+        print(f"API bilan bog'liq xatolik: {e}")
+        return None
 
-bot.polling()
+@dp.message_handler(commands=['start'])
+async def start_handler(message: types.Message):
+    telegram_id = message.from_user.id
+    response = requests.get(f"{API_BASE_URL}users/?telegram_id={telegram_id}")
+    if response.status_code == 200 and response.json():
+        await message.answer("Botga xush kelibsiz")
+    else:
+        data = {
+            "telegram_id": telegram_id,
+            "first_name": message.from_user.first_name or "",
+            "last_name": message.from_user.last_name or "",
+            "username": message.from_user.username or "",
+        }
+        user_response = requests.post(f"{API_BASE_URL}users/", data=data)
+        if user_response.status_code == 201:
+            await message.answer("Botga xush kelibsiz")
+        else:
+            await message.answer(f"Ro'yxatdan o'tishda xatolik: {user_response.text}")
+
+    # Inline keyboard for menu options
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(
+        InlineKeyboardButton("📜 E'lon berish", callback_data="start_posting"),
+        InlineKeyboardButton("💳 Sotib olish", callback_data="start_buying")
+    )
+
+    await message.answer("E'lon joylashtirish yoki sotib olish uchun quyidagi tugmalardan birini tanlang:", reply_markup=keyboard)
+
+@dp.callback_query_handler(lambda c: c.data == "start_buying")
+async def buying_handler(callback_query: types.CallbackQuery):
+    """Handle the 'Sotib olish' option."""
+    categories = await fetch_api(f"{API_BASE_URL}categories/")
+    if categories:
+        keyboard = InlineKeyboardMarkup()
+        for category in categories:
+            keyboard.add(InlineKeyboardButton(category['name'], callback_data=f"category_{category['id']}"))
+        await bot.send_message(callback_query.from_user.id, "Kategoriya tanlang:", reply_markup=keyboard)
+    else:
+        await bot.send_message(callback_query.from_user.id, "Hozirda kategoriya mavjud emas.")
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith("category_"))
+async def category_handler(callback_query: types.CallbackQuery):
+    category_id = callback_query.data.split("_")[1]
+    url = f"{API_BASE_URL}models/?category_id={category_id}"
+    models = await fetch_api(url)
+    if models:
+        keyboard = InlineKeyboardMarkup()
+        for model in models:
+            keyboard.add(InlineKeyboardButton(model['name'], callback_data=f"model_{model['id']}"))
+        await bot.send_message(callback_query.from_user.id, "Modelni tanlang:", reply_markup=keyboard)
+    else:
+        await bot.send_message(callback_query.from_user.id, "Bu kategoriya uchun model mavjud emas.")
+
+@dp.callback_query_handler(lambda c: c.data.startswith("model_"))
+async def model_handler(callback_query: types.CallbackQuery):
+    model_id = callback_query.data.split("_")[1]
+    url = f"{API_BASE_URL}posts/?model_id={model_id}"
+    posts = await fetch_api(url)
+
+    if posts:
+        for post in posts:
+            keyboard = InlineKeyboardMarkup()
+            keyboard.add(InlineKeyboardButton("🗺 Locatsani olish", callback_data=f"location_{post['id']}"))
+
+            # Ensure image is valid
+            photo = post.get('image', "https://via.placeholder.com/300")  # Fallback to a placeholder
+
+            try:
+                await bot.send_photo(
+                    callback_query.from_user.id,
+                    photo=photo,
+                    caption=f"{post['model']['name']}\nNarx: {post['price']}\nYil: {post['year']['year']}",
+                    reply_markup=keyboard
+                )
+            except Exception as e:
+                print(f"Error sending photo: {e}")
+                await bot.send_message(callback_query.from_user.id, "Rasmni yuborishda xatolik yuz berdi.")
+    else:
+        await bot.send_message(callback_query.from_user.id, "Bu model uchun e'lonlar mavjud emas.")
+
+@dp.callback_query_handler(lambda c: c.data.startswith("location_"))
+async def location_handler(callback_query: types.CallbackQuery):
+    post_id = callback_query.data.split("_")[1]
+    url = f"{API_BASE_URL}posts/{post_id}/"
+    post = await fetch_api(url)
+    
+    if post:
+        # Extract location coordinates (latitude, longitude)
+        location = post['location']
+        latitude, longitude = map(float, location.split(","))
+        
+        # Send the location as a map
+        await bot.send_location(callback_query.from_user.id, latitude, longitude)
+    else:
+        await bot.send_message(callback_query.from_user.id, "Locatsiyani olishda xatolik yuz berdi.")
+
+
+
+####################Sotish olish uchun#####################
+
+# Callback query handler for starting the post creation process
+@dp.callback_query_handler(lambda c: c.data == "start_posting")
+async def start_post_creation(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.answer_callback_query(callback_query.id)  # Acknowledge the callback query
+
+    # Fetch categories from the API
+    response = requests.get(f"{API_BASE_URL}categories/")
+    if response.status_code == 200:
+        categories = response.json()
+    else:
+        await bot.send_message(callback_query.from_user.id, "Kategoriyalarni yuklashda xatolik yuz berdi.")
+        return
+
+    # Create an inline keyboard for categories
+    keyboard = InlineKeyboardMarkup()
+    for category in categories:
+        keyboard.add(InlineKeyboardButton(category['name'], callback_data=f"category_{category['id']}"))
+
+    await bot.send_message(callback_query.from_user.id, "Kategoriyani tanlang:", reply_markup=keyboard)
+
+    # Set the FSM state
+    await PostCreation.category.set()
+
+# Kategoriya tanlash
+@dp.callback_query_handler(lambda c: c.data.startswith('category_'), state=PostCreation.category)
+async def choose_category(callback_query: types.CallbackQuery, state: FSMContext):
+    category_id = callback_query.data.split('_')[1]
+    categories = await fetch_api(f"{API_BASE_URL}categories/")
+    category_name = next((cat['name'] for cat in categories if str(cat['id']) == category_id), "Noma'lum kategoriya")
+    
+    await state.update_data(category_id=category_id, category_name=category_name)
+
+    models = await fetch_api(f"{API_BASE_URL}models/?category={category_id}")
+    if not models:
+        await bot.send_message(callback_query.from_user.id, "Model ma'lumotlarini yuklashda xatolik yuz berdi.")
+        return
+
+    keyboard = InlineKeyboardMarkup()
+    for model in models:
+        keyboard.add(InlineKeyboardButton(model['name'], callback_data=f"model_{model['id']}"))
+    await bot.send_message(callback_query.from_user.id, "Modelni tanlang:", reply_markup=keyboard)
+    await PostCreation.model.set()
+
+# Model tanlash
+@dp.callback_query_handler(lambda c: c.data.startswith('model_'), state=PostCreation.model)
+async def choose_model(callback_query: types.CallbackQuery, state: FSMContext):
+    model_id = callback_query.data.split('_')[1]
+    models = await fetch_api(f"{API_BASE_URL}models/")
+    model_name = next((model['name'] for model in models if str(model['id']) == model_id), "Noma'lum model")
+    
+    await state.update_data(model_id=model_id, model_name=model_name)
+
+    years = await fetch_api(f"{API_BASE_URL}years/")
+    if not years:
+        await bot.send_message(callback_query.from_user.id, "Yillarni yuklashda xatolik yuz berdi.")
+        return
+
+    keyboard = InlineKeyboardMarkup()
+    for year in years:
+        keyboard.add(InlineKeyboardButton(year['year'], callback_data=f"year_{year['id']}"))
+    await bot.send_message(callback_query.from_user.id, "Yilni tanlang:", reply_markup=keyboard)
+    await PostCreation.year.set()
+
+# Yil tanlash
+@dp.callback_query_handler(lambda c: c.data.startswith('year_'), state=PostCreation.year)
+async def choose_year(callback_query: types.CallbackQuery, state: FSMContext):
+    year_id = callback_query.data.split('_')[1]
+    years = await fetch_api(f"{API_BASE_URL}years/")
+    year_name = next((year['year'] for year in years if str(year['id']) == year_id), "Noma'lum yil")
+    
+    await state.update_data(year_id=year_id, year_name=year_name)
+    await bot.send_message(callback_query.from_user.id, "Narxni kiriting:")
+    await PostCreation.price.set()
+
+# Narxni kiritish
+@dp.message_handler(state=PostCreation.price)
+async def enter_price(message: types.Message, state: FSMContext):
+    price = message.text
+    await state.update_data(price=price)
+    await message.answer("Rasmni yuboring:")
+    await PostCreation.image.set()
+
+# Rasmni yuklash
+@dp.message_handler(content_types=['photo'], state=PostCreation.image)
+async def upload_image(message: types.Message, state: FSMContext):
+    file_id = message.photo[-1].file_id
+    file = await bot.get_file(file_id)
+    file_path = file.file_path
+    photo_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(photo_url) as response:
+            if response.status != 200:
+                await message.answer("Rasmni yuklab olishda xatolik yuz berdi.")
+                return
+            
+            # Rasmdan olingan ma'lumotlarni saqlash
+            photo_data = await response.read()
+
+            # Faylni API'ga jo'natish uchun saqlash
+            await state.update_data(image=photo_data)
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True).add(
+        KeyboardButton("📍 Joylashuvni yuborish", request_location=True)
+    )
+    await message.answer("Joylashuvni tanlang:", reply_markup=keyboard)
+
+    await PostCreation.location.set()
+
+# Location selection and displaying confirmation details
+@dp.message_handler(content_types=['location'], state=PostCreation.location)
+async def choose_location(message: types.Message, state: FSMContext):
+    location = f"{message.location.latitude}, {message.location.longitude}"
+    await state.update_data(location=location)
+
+    data = await state.get_data()
+
+    # Inline tugmalar yaratish
+    keyboard = InlineKeyboardMarkup(row_width=2)
+    keyboard.add(
+        InlineKeyboardButton("✅ Tasdiqlash", callback_data="confirm_post"),
+        InlineKeyboardButton("❌ Bekor qilish", callback_data="cancel_post")
+    )
+
+    # Foydalanuvchiga ma'lumotlarni yuborish
+    await bot.send_photo(
+        chat_id=message.chat.id,
+        photo=data.get("image"),
+        caption=(f"Ma'lumotlaringiz:\n\n"
+                 f"Kategoriya: {data.get('category_name')}\n"
+                 f"Model: {data.get('model_name')}\n"
+                 f"Yil: {data.get('year_name')}\n"
+                 f"Narx: {data.get('price')}\n"
+                 f"Joylashuv: {data.get('location')}\n\n"
+                 "Tasdiqlash yoki bekor qilish uchun tugmani bosing."),
+        reply_markup=keyboard
+    )
+
+    # Joylashuv tugmasini o‘chirish
+    await bot.send_message(message.chat.id, "Joylashuv qabul qilindi.", reply_markup=ReplyKeyboardRemove())
+# Confirm post handler
+@dp.callback_query_handler(lambda c: c.data == "confirm_post", state=PostCreation.location)
+async def confirm_post_callback(callback_query: types.CallbackQuery, state: FSMContext):
+    try:
+        data = await state.get_data()
+
+        form_data = aiohttp.FormData()
+        form_data.add_field('telegram_id', str(callback_query.from_user.id))
+        form_data.add_field('model', str(data.get('model_id', '')))
+        form_data.add_field('year', str(data.get('year_id', '')))
+        form_data.add_field('price', str(data.get('price', '')))
+        form_data.add_field('location', data.get('location', ''))
+        form_data.add_field('image', data.get('image'), filename="image.jpg", content_type="image/jpeg")
+
+        api_url = f"{API_BASE_URL}posts/"
+        async with aiohttp.ClientSession() as session:
+            async with session.post(api_url, data=form_data) as response:
+                if response.status == 201:
+                    await bot.send_message(callback_query.from_user.id, "E'loningiz muvaffaqiyatli saqlandi!")
+                else:
+                    error_msg = await response.text()
+                    await bot.send_message(callback_query.from_user.id, f"Xatolik yuz berdi: {error_msg}")
+
+    except Exception as e:
+        await bot.send_message(callback_query.from_user.id, f"Xatolik yuz berdi: {str(e)}")
+
+    await state.finish()
+
+
+# Cancel post handler
+@dp.callback_query_handler(lambda c: c.data == "cancel_post", state=PostCreation.location)
+async def cancel_post_callback(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+    # Xabarni o‘chirish
+    await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id)
+    await bot.send_message(callback_query.from_user.id, "E'lon berish jarayoni bekor qilindi.")
+
+
+if __name__ == "__main__":
+    executor.start_polling(dp, skip_updates=True)
