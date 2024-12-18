@@ -9,7 +9,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 import requests
 
 BOT_TOKEN = "7631105546:AAGszQFEoWOGX2mOOjd4LIsXL433MGLiLfc"
-API_BASE_URL = "https://9b14-95-214-210-167.ngrok-free.app/api/" 
+API_BASE_URL = "https://avto-production.up.railway.app/api/" 
 
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
