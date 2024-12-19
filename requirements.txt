@@ -1,5 +1,3 @@
 pillow==10.4.0
 requests==2.31.0
-aiohttp==3.7.4  # Version compatible with aiogram 2.x
-APScheduler==3.6.3
-aiogram==2.25.1
+pyTelegramBotAPI==4.22.1
