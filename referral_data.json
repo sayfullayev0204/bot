@@ -1,0 +1,23 @@
+{
+    "1184615268": {
+        "referrals": [
+            "5475213505",
+            "6373773730"
+        ],
+        "invited_by": null
+    },
+    "5475213505": {
+        "referrals": [],
+        "invited_by": null
+    },
+    "6373773730": {
+        "referrals": [
+            "6751710352"
+        ],
+        "invited_by": null
+    },
+    "6751710352": {
+        "referrals": [],
+        "invited_by": null
+    }
+}
