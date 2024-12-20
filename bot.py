@@ -2,15 +2,14 @@ import telebot
 import json
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-TOKEN = '7189070743:AAGfEYcjJLl7sRiulnEQGHkPvMg5V2x18do'
-CHANNEL_ID = -1002072810007
-PRIVATE_CHANNEL_LINK = "https://t.me/+oqCpqlRHAahhODky"
+TOKEN = '7992250612:AAFztka-pZKIa4E9suGNIHSIbkB9tE-Mn-E'
+CHANNEL_ID = -1001673432975
+PRIVATE_CHANNEL_LINK = "https://t.me/your_private_channel"
 DATA_FILE = "referral_data.json"
 
 
 bot = telebot.TeleBot(TOKEN)
 
-# Ma'lumotlarni yuklash yoki bo'sh lug'at yaratish
 def load_data():
     try:
         with open(DATA_FILE, "r") as file:
@@ -18,12 +17,10 @@ def load_data():
     except FileNotFoundError:
         return {}
 
-# Ma'lumotlarni saqlash
 def save_data(data):
     with open(DATA_FILE, "w") as file:
         json.dump(data, file, indent=4)
 
-# Kanalga a'zolikni tekshirish
 def is_subscribed(user_id):
     try:
         member_status = bot.get_chat_member(CHANNEL_ID, user_id).status
@@ -31,32 +28,27 @@ def is_subscribed(user_id):
     except Exception:
         return False
 
-# Start komandasi
 @bot.message_handler(commands=["start"])
 def start(message):
     user_id = str(message.chat.id)
     data = load_data()
 
-    # Referal ID ni tekshirish
     args = message.text.split()
     if len(args) > 1:
         referrer_id = args[1]
-        if referrer_id != user_id:  # Foydalanuvchi o'zini referal qila olmaydi
+        if referrer_id != user_id:  
             if referrer_id in data:
                 if user_id not in data[referrer_id]["referrals"]:
                     data[referrer_id]["referrals"].append(user_id)
 
-    # Foydalanuvchini qo'shish
     if user_id not in data:
         data[user_id] = {"referrals": [], "invited_by": None}
 
     save_data(data)
 
-    # Foydalanuvchi kanalga a'zo bo'lsa
     if is_subscribed(message.chat.id):
         referral_link = f"https://t.me/{bot.get_me().username}?start={user_id}"
 
-        # Taklif qilingan do'stlar soni 10 ta bo'lsa faqat bitta xabar yuborilsin
         if len(data[user_id]["referrals"]) >= 10:
             bot.send_message(
                 message.chat.id,
@@ -134,7 +126,6 @@ def check_subscription(call):
     data = load_data()
 
     if is_subscribed(call.message.chat.id):
-        # Agar a'zo bo'lsa
         referral_link = f"https://t.me/{bot.get_me().username}?start={user_id}"
         with open("img2.jpg", "rb") as photo:
                 bot.send_photo(
@@ -171,13 +162,11 @@ def check_subscription(call):
             "Kechirasiz, siz hali kanalga aʼzo bo‘lmadingiz. Iltimos, kanalga aʼzo bo‘ling va qaytadan tekshiring."
         )
 
-# Yangi xabarlar uchun ishlov beruvchi
 @bot.message_handler(func=lambda message: True)
 def check_referrals(message):
     user_id = str(message.chat.id)
     data = load_data()
 
-    # 10 do'st taklif qilganini tekshirish
     if user_id in data and len(data[user_id]["referrals"]) >= 10:
         bot.send_message(
             message.chat.id,
@@ -185,5 +174,4 @@ def check_referrals(message):
         )
 
 
-# Botni ishga tushirish
 bot.polling()
