@@ -2,7 +2,7 @@ import telebot
 import json
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-TOKEN = 7992250612:AAFztka-pZKIa4E9suGNIHSIbkB9tE-Mn-E'
+TOKEN = '7992250612:AAFztka-pZKIa4E9suGNIHSIbkB9tE-Mn-E'
 CHANNEL_ID = -1001673432975
 PRIVATE_CHANNEL_LINK = "https://t.me/your_private_channel"
 DATA_FILE = "referral_data.json"
