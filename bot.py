@@ -6,7 +6,7 @@ from aiogram import Router
 import logging
 import asyncio
 import urllib
-API_TOKEN = '7828651431:AAELpI8DuJFcq-M3B6nhPQv_xhJ41QnkeQI'
+API_TOKEN = '6804578580:AAHJhUTXbOaajQjzURNnT_xXuQQV3smwKC8'
 web_url = "https://cargobot-production.up.railway.app"
 
 
