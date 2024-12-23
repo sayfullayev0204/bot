@@ -1,177 +1,203 @@
-import telebot
-import json
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import Bot, Dispatcher
+from aiogram.filters import Command
+from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram import Router
+import logging
+import asyncio
+import urllib
+API_TOKEN = '7828651431:AAELpI8DuJFcq-M3B6nhPQv_xhJ41QnkeQI'
+web_url = "https://cargobot-production.up.railway.app"
 
-TOKEN = '7992250612:AAFztka-pZKIa4E9suGNIHSIbkB9tE-Mn-E'
-CHANNEL_ID = -1001673432975
-PRIVATE_CHANNEL_LINK = "https://t.me/your_private_channel"
-DATA_FILE = "referral_data.json"
 
 
-bot = telebot.TeleBot(TOKEN)
+bot = Bot(token=API_TOKEN)
+storage = MemoryStorage()
+dp = Dispatcher(storage=storage)
+router = Router()
 
-def load_data():
+data_storage = {}
+
+async def get_user_photo_url(user_id: int) -> str:
+    """Fetches the user's profile photo URL."""
+    photos = await bot.get_user_profile_photos(user_id)
+    if photos.total_count > 0:
+        file_id = photos.photos[0][0].file_id
+        file = await bot.get_file(file_id)
+        photo_url = f"https://api.telegram.org/file/bot{API_TOKEN}/{file.file_path}"
+        return photo_url
+    return None
+
+@router.message(Command(commands=["start"]))
+async def send_welcome(message: Message):
+    tg_id = message.from_user.id  
+    username = message.from_user.username  
+    first_name = message.from_user.first_name  # Get first_name
+    last_name = message.from_user.last_name  # Get last_name
+
+    profile_photo = await get_user_photo_url(tg_id)
+    
+    profile_photo_encoded = urllib.parse.quote(profile_photo or '')
+    web_app_url = f"{web_url}/?tg_id={tg_id}&username={username}&first_name={first_name}&last_name={last_name}&profile_photo={profile_photo_encoded}"
+
+    web_app_button = InlineKeyboardButton(
+        text="Web App ni ochish",
+        web_app={"url": f"{web_app_url}"}  # Replace with your actual Web App URL
+    )
+
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[web_app_button]])
+
+    await message.answer(
+        f"Assalomu alaykum, {message.from_user.first_name}! Botga xush kelibsiz.\n"
+        f"Web App yoki bot orqali e'lon berish uchun tugmalardan birini tanlang:",
+        reply_markup=keyboard
+    )
+
+# @router.callback_query(lambda c: c.data == "start_ad")
+# async def handle_start_ad(callback: CallbackQuery):
+#     ad_type_buttons = InlineKeyboardMarkup(inline_keyboard=[
+#         [InlineKeyboardButton(text="Jo'natma ber yuboraman", callback_data="ad_type_1")],
+#         [InlineKeyboardButton(text="Jo'natma olib ketaman", callback_data="ad_type_2")]
+#     ])
+#     await callback.message.edit_text("E'lon turini tanlang:", reply_markup=ad_type_buttons)
+
+# @router.callback_query(lambda c: c.data.startswith("ad_type_"))
+# async def handle_ad_type(callback: CallbackQuery):
+#     user_id = callback.from_user.id
+#     ad_type = callback.data.replace("ad_type_", "")  # ad_type_1 yoki ad_type_2 ni chiqaramiz
+
+#     # Matnni saqlash
+#     ad_type_text = "Jo'natma ber yuboraman" if ad_type == "1" else "Jo'natma olib ketaman"
+#     data_storage[user_id] = {"type": ad_type, "type_text": ad_type_text}
+
+#     ad_type_buttons = InlineKeyboardMarkup(inline_keyboard=[
+#         [InlineKeyboardButton(text="Yaponiyadan 🇯🇵  ➡️  O`zbekistonga  🇺🇿", callback_data="direction_1")],
+#         [InlineKeyboardButton(text="O`zbekistonga  🇺🇿  ➡️  Yaponiyadan 🇯🇵", callback_data="direction_2")]
+#     ])
+#     await callback.message.edit_text("Yo'nalishni tanlang:", reply_markup=ad_type_buttons)
+
+# @router.callback_query(lambda c: c.data.startswith("direction_"))
+# async def handle_direction(callback: CallbackQuery):
+#     user_id = callback.from_user.id
+#     direction = callback.data.replace("direction_", "")
+
+#     # Matnni saqlash
+#     direction_text = "Yaponiyadan 🇯🇵  ➡️  O`zbekistonga  🇺🇿" if direction == "1" else "O`zbekistonga  🇺🇿  ➡️  Yaponiyadan 🇯🇵"
+#     data_storage[user_id]["direction"] = direction
+#     data_storage[user_id]["direction_text"] = direction_text
+
+#     bag_buttons = InlineKeyboardMarkup(inline_keyboard=[
+#         [InlineKeyboardButton(text="Bagaj 1", callback_data="bag_1")],
+#         [InlineKeyboardButton(text="Bagaj 2", callback_data="bag_2")]
+#     ])
+#     await callback.message.edit_text("Bagajni tanlang:", reply_markup=bag_buttons)
+
+# @router.callback_query(lambda c: c.data.startswith("bag_"))
+# async def handle_bag(callback: CallbackQuery):
+#     user_id = callback.from_user.id
+#     bag = callback.data.replace("bag_", "")
+
+#     # Matnni saqlash
+#     bag_text = "Bagaj 1" if bag == "1" else "Bagaj 2"
+#     data_storage[user_id]["bag"] = bag
+#     data_storage[user_id]["bag_text"] = bag_text
+
+#     airport_buttons = InlineKeyboardMarkup(inline_keyboard=[
+#         [InlineKeyboardButton(text="Airport 1", callback_data="airport_1")],
+#         [InlineKeyboardButton(text="Airport 2", callback_data="airport_2")]
+#     ])
+#     await callback.message.edit_text("Airportni tanlang:", reply_markup=airport_buttons)
+
+# @router.callback_query(lambda c: c.data.startswith("airport_"))
+# async def handle_airport(callback: CallbackQuery):
+#     user_id = callback.from_user.id    
+#     airport = callback.data.replace("airport_", "")
+    
+#     # Matnni saqlash
+#     airport_text = "Airport 1" if airport == "1" else "Airport 2"
+#     data_storage[user_id]["airport"] = airport
+#     data_storage[user_id]["airport_text"] = airport_text
+
+#     await callback.message.edit_text("Vaqtni kiriting (YYYY-MM-DD HH:MM):")
+
+# @router.message()
+# async def handle_text(message: Message):
+#     user_id = message.from_user.id
+#     if user_id not in data_storage or "airport" not in data_storage[user_id]:
+#         await message.answer("")
+#         return
+
+#     if "time" not in data_storage[user_id]:
+#         data_storage[user_id]["time"] = message.text
+#         await message.answer("Izohni kiriting:")
+#     elif "description" not in data_storage[user_id]:
+#         data_storage[user_id]["description"] = message.text
+#         await message.answer("Kontaktni kiriting:")
+#     elif "contact" not in data_storage[user_id]:
+#         data_storage[user_id]["contact"] = message.text
+#         await message.answer("Narxni kiriting:")
+#     elif "price" not in data_storage[user_id]:
+#         data_storage[user_id]["price"] = message.text
+
+#         ad = data_storage[user_id]
+#         ad_message = (
+#             f"📢 Yangi e'lon\n\n"
+#             f"📌 E'lon turi: {ad['type_text']}\n"
+#             f"🌍 Yo'nalish: {ad['direction_text']}\n"
+#             f"🎒 Bagaj: {ad['bag_text']}\n"
+#             f"✈️ Airport: {ad['airport_text']}\n"
+#             f"🕒 Vaqt: {ad['time']}\n"
+#             f"📝 Izoh: {ad['description']}\n"
+#             f"📞 Kontakt: {ad['contact']}\n"
+#             f"💵 Narx: {ad['price']}"
+#         )
+#         confirm_buttons = InlineKeyboardMarkup(inline_keyboard=[
+#             [InlineKeyboardButton(text="Tasdiqlash", callback_data="confirm_ad")],
+#             [InlineKeyboardButton(text="Bekor qilish", callback_data="cancel_ad")]
+#         ])
+#         await message.answer(ad_message, reply_markup=confirm_buttons)
+
+# @router.callback_query(lambda c: c.data == "confirm_ad")
+# async def handle_confirm_ad(callback: CallbackQuery):
+#     user_id = callback.from_user.id
+#     if user_id in data_storage:
+#         ad = data_storage[user_id]
+#         username = callback.from_user.username
+#         username_text = f"@{username}" if username else "Username mavjud emas"
+        
+#         group_id = -1002119597681  # Replace with your group ID
+#         ad_message = (
+#             f"📢 Yangi e'lon\n\n"
+#             f"📌 E'lon turi: {ad['type_text']}\n"
+#             f"🌍 Yo'nalish: {ad['direction_text']}\n"
+#             f"🎒 Bagaj: {ad['bag_text']}\n"
+#             f"✈️ Airport: {ad['airport_text']}\n"
+#             f"🕒 Vaqt: {ad['time']}\n"
+#             f"📝 Izoh: {ad['description']}\n"
+#             f"📞 Kontakt: {ad['contact']}\n"
+#             f"💵 Narx: {ad['price']}\n"
+#             f"👤 Foydalanuvchi: {username_text}\n\n\n\n"
+#             "🔗 Guruhga qo'shilish 'guruhnomi'\n"
+#             "📲 E'lon berish 'bot nomi'"
+#         )
+#         await bot.send_message(group_id, ad_message)
+#         await callback.message.edit_text("E'lon tasdiqlandi va guruhga yuborildi!")
+#         del data_storage[user_id]
+
+# @router.callback_query(lambda c: c.data == "cancel_ad")
+# async def handle_cancel_ad(callback: CallbackQuery):
+#     user_id = callback.from_user.id
+#     if user_id in data_storage:
+#         del data_storage[user_id]
+#     await callback.message.edit_text("E'lon bekor qilindi.")
+
+async def main():
     try:
-        with open(DATA_FILE, "r") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        return {}
+        dp.include_router(router)
+        await dp.start_polling(bot)
+    except Exception as e:
+        logging.error(f"Xatolik yuz berdi: {e}")
 
-def save_data(data):
-    with open(DATA_FILE, "w") as file:
-        json.dump(data, file, indent=4)
-
-def is_subscribed(user_id):
-    try:
-        member_status = bot.get_chat_member(CHANNEL_ID, user_id).status
-        return member_status in ["member", "administrator", "creator"]
-    except Exception:
-        return False
-
-@bot.message_handler(commands=["start"])
-def start(message):
-    user_id = str(message.chat.id)
-    data = load_data()
-
-    args = message.text.split()
-    if len(args) > 1:
-        referrer_id = args[1]
-        if referrer_id != user_id:  
-            if referrer_id in data:
-                if user_id not in data[referrer_id]["referrals"]:
-                    data[referrer_id]["referrals"].append(user_id)
-
-    if user_id not in data:
-        data[user_id] = {"referrals": [], "invited_by": None}
-
-    save_data(data)
-
-    if is_subscribed(message.chat.id):
-        referral_link = f"https://t.me/{bot.get_me().username}?start={user_id}"
-
-        if len(data[user_id]["referrals"]) >= 10:
-            bot.send_message(
-                message.chat.id,
-                f"Tabriklaymiz! Siz 10 do‘stni taklif qildingiz! \n\nMana yopiq kanal havolasi:\n\n{PRIVATE_CHANNEL_LINK}"
-            )
-        else:
-            with open("img2.jpg", "rb") as photo:
-                bot.send_photo(
-                message.chat.id,
-                    photo,
-                    caption=(
-                        "📢 Assalomu alaykum, hurmatli arab tili ixlosmandlari!\n\n"
-                        "Sizni Luqmonjon Muftillayev tomonidan tashkil etilgan “Muammoga yechim” "
-                        "nomli yopiq mentorlik guruhiga qo‘shilishga taklif qilamiz! 🌟\n\n"
-                        "Bu guruh sizning arab tilida duch keladigan har qanday muammolaringiz uchun yechim topadigan joy! 🧠✅\n\n"
-                        "🎯 Siz bu yerda: \n"
-                        "🔹Tilni o‘rganishda yuzaga keladigan savollarga aniq javoblar;\n"
-                        "🔹Foydali maslahatlar va strategiyalar;\n"
-                        "🔹Eksklyuziv bilimlar va tajribalarni olish imkoniyatiga ega bo‘lasiz.\n\n"
-                        "Qo‘shilish shartlari juda oddiy:\n"
-                        "1️⃣ Bizning kanalga obuna bo‘ling.\n"
-                        "2️⃣ 10 nafar do‘stingizni taklif qiling.\n"
-                        "3️⃣ Taklif qilgan 10 nafar do‘stingiz orqali kanalga qo‘shilganingiz tasdiqlangach, "
-                        "sizga yopiq guruhning maxfiy havolasi taqdim etiladi.\n\n"
-                        "🌟 “Muammoga yechim” – arab tili o‘rganishda sizning ishonchli yo‘lboshchingiz bo‘ladi! "
-                        "💡Imkoniyatni qo‘ldan boy bermang! Darhol obuna bo‘ling va o‘z do‘stlaringizni ham qo‘shiling. "
-                        "Birgalikda o‘sish uchun ajoyib imkoniyat!\n\n"
-                        f"📌 Havola ⤵️\n\n{referral_link}"
-                    )
-            )
-            
-            
-            bot.send_message(
-                message.chat.id,
-                f"Taklif qilingan do'stlaringiz soni: {len(data[user_id]['referrals'])}/10"
-            )
-    else:
-        markup = InlineKeyboardMarkup()
-        check_button = InlineKeyboardButton("Aʼzolikni tekshirish", callback_data="check_subscription")
-        markup.add(check_button)
-        with open("img1.jpg", "rb") as photo:
-            bot.send_photo(
-                message.chat.id,
-                photo,
-                caption=(
-                    f"Muftillayev Luqmonjon kim?📝\n\n"
-                    f"📌O'zbekiston xalqaro islom akademiyasi 4/4\n"
-                    f"📌Arab tili eksperti\n"
-                    f"📌At Tanaldan <a href=\"https://t.me/c/1673432975/2104\">C2 (muhovara-Nahv-Balog'at)</a>\n"
-                    f"📌Cefrdan C1\n"
-                    f"📌Sinxron Tarjimon\n"
-                    f"📌400 dan ortiq B2-C1 natijali talabalar\n"
-                    f"📌Dublajor\n"
-                    f"📌Mudarris\n"
-                    f"📌10 ta kitob va qo'llanma muallifi\n"
-                    f"📌<a href=\"https://t.me/cefrnatijalar\">Natijalar</a>\n"
-                    f"📌<a href=\"https://t.me/+uVgkeG2kv2dmMjAy\">Bituvchilar fikri</a>\n"
-                    f"📌Qisqacha qilib aytganda arab tili sohasini O'zbekistondagi rivojiga oz bo'lsada hissasini qo'shishga harakat qilayotgan talaba.\n\n"
-                ),
-                parse_mode='HTML'
-                )
-
-            bot.send_message(
-                    message.chat.id,
-                    f"Salom! Botdan foydalanish uchun ushbu kanalga a'zo bo'ling:\n\n"
-                    f"https://t.me/{bot.get_chat(CHANNEL_ID).username}\n\n"
-                    "A'zo bo'lganingizdan so'ng, \"Aʼzolikni tekshirish\" tugmasini bosing.",
-                    reply_markup=markup
-                )
-
-        # Callbackni qayta ishlash
-@bot.callback_query_handler(func=lambda call: call.data == "check_subscription")
-def check_subscription(call):
-    user_id = str(call.message.chat.id)
-    data = load_data()
-
-    if is_subscribed(call.message.chat.id):
-        referral_link = f"https://t.me/{bot.get_me().username}?start={user_id}"
-        with open("img2.jpg", "rb") as photo:
-                bot.send_photo(
-                call.message.chat.id,
-                    photo,
-                    caption=(
-                        "📢 Assalomu alaykum, hurmatli arab tili ixlosmandlari!\n\n"
-                        "Sizni Luqmonjon Muftillayev tomonidan tashkil etilgan “Muammoga yechim” "
-                        "nomli yopiq mentorlik guruhiga qo‘shilishga taklif qilamiz! 🌟\n\n"
-                        "Bu guruh sizning arab tilida duch keladigan har qanday muammolaringiz uchun yechim topadigan joy! 🧠✅\n\n"
-                        "🎯 Siz bu yerda: \n"
-                        "🔹Tilni o‘rganishda yuzaga keladigan savollarga aniq javoblar;\n"
-                        "🔹Foydali maslahatlar va strategiyalar;\n"
-                        "🔹Eksklyuziv bilimlar va tajribalarni olish imkoniyatiga ega bo‘lasiz.\n\n"
-                        "Qo‘shilish shartlari juda oddiy:\n"
-                        "1️⃣ Bizning kanalga obuna bo‘ling.\n"
-                        "2️⃣ 10 nafar do‘stingizni taklif qiling.\n"
-                        "3️⃣ Taklif qilgan 10 nafar do‘stingiz orqali kanalga qo‘shilganingiz tasdiqlangach, "
-                        "sizga yopiq guruhning maxfiy havolasi taqdim etiladi.\n\n"
-                        "🌟 “Muammoga yechim” – arab tili o‘rganishda sizning ishonchli yo‘lboshchingiz bo‘ladi! "
-                        "💡Imkoniyatni qo‘ldan boy bermang! Darhol obuna bo‘ling va o‘z do‘stlaringizni ham qo‘shiling. "
-                        "Birgalikda o‘sish uchun ajoyib imkoniyat!\n\n"
-                        f"📌 Havola ⤵️\n\n{referral_link}"
-                    )
-            )
-            
-        bot.send_message(
-                call.message.chat.id,
-                f"Taklif qilingan do'stlaringiz soni: {len(data[user_id]['referrals'])}/10"
-            )
-    else:
-        bot.send_message(
-            call.message.chat.id,
-            "Kechirasiz, siz hali kanalga aʼzo bo‘lmadingiz. Iltimos, kanalga aʼzo bo‘ling va qaytadan tekshiring."
-        )
-
-@bot.message_handler(func=lambda message: True)
-def check_referrals(message):
-    user_id = str(message.chat.id)
-    data = load_data()
-
-    if user_id in data and len(data[user_id]["referrals"]) >= 10:
-        bot.send_message(
-            message.chat.id,
-            f"Tabriklaymiz! Siz 10 do‘stni taklif qildingiz! Mana yopiq kanal havolasi:\n{PRIVATE_CHANNEL_LINK}"
-        )
-
-
-bot.polling()
+if __name__ == '__main__':
+    asyncio.run(main())
