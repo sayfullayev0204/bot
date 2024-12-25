@@ -5,7 +5,7 @@ import urllib
 
 API_BASE_URL = "https://cargobot-production.up.railway.app/api/"  # Django API URL
 TOKEN = "7828651431:AAELpI8DuJFcq-M3B6nhPQv_xhJ41QnkeQI"
-web_url = "https://cargobot-production.up.railway.app/"
+web_url = "https://cargobot-production.up.railway.app"
 
 TELEGRAM_CHAT_ID_UK = -1002231892574  
 TELEGRAM_CHAT_ID_US = -1002440391832
