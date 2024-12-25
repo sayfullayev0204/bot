@@ -2,3 +2,4 @@ requests==2.31.0
 aiohttp==3.9.5
 aiogram==3.10.0
 asyncio==3.4.3
+PyTelegramBotApi==4.22.1
